@@ -2,6 +2,44 @@ from rest_framework import serializers
 from .models import User
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+# rest of password import
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_decode
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+class SetNewPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8)
+
+    def validate(self, attrs):
+        try:
+            uid = attrs.get('uid')
+            token = attrs.get('token')
+            new_password = attrs.get('new_password')
+
+            # Decode UID
+            uid = urlsafe_base64_decode(uid).decode()
+            user = User.objects.get(pk=uid)
+
+            # Check token
+            if not PasswordResetTokenGenerator().check_token(user, token):
+                raise serializers.ValidationError("Invalid or expired token")
+
+            attrs['user'] = user
+            return attrs
+
+        except Exception:
+            raise serializers.ValidationError("Invalid data")
+
+    def save(self, **kwargs):
+        user = self.validated_data['user']
+        new_password = self.validated_data['new_password']
+        user.set_password(new_password)
+        user.save()
+        return user
+
 class UserRegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -18,8 +56,6 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             role=validated_data.get('role', 'student')
         )
         return user
-
-
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     username_field = 'email'
@@ -69,3 +105,4 @@ class UserPasswordUpdateSerializer(serializers.Serializer):
         user.set_password(self.validated_data['new_password'])
         user.save()
         return user
+    

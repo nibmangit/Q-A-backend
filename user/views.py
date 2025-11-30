@@ -2,13 +2,57 @@ from rest_framework import generics
 from .serializers import (
     UserRegisterSerializer,
     MyTokenObtainPairSerializer, UserProfileSerializer,
-    UserProfileUpdateSerializer, UserPasswordUpdateSerializer
+    UserProfileUpdateSerializer, UserPasswordUpdateSerializer,
+    SetNewPasswordSerializer
 )
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
+
+# For password Reset.
+from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.core.mail import send_mail
+
+#rest password view
+User = get_user_model()
+class PasswordResetRequestView(generics.GenericAPIView):
+    def post(self, request):
+        email = request.data.get('email')
+
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"message": "If this email exists, we sent a reset link."}, status=200)
+        
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = PasswordResetTokenGenerator().make_token(user)
+
+        reset_link = f"http://localhost:3000/reset-password/{uid}/{token}/"
+
+        send_mail(
+            subject="Reset your password",
+            message=f"Click the link to reset your password:\n{reset_link}",
+            from_email="no-reply@example.com",
+            recipient_list=[user.email],
+        )
+
+        return Response({"message": "Password reset link sent"}, status=200)
+
+class PasswordResetConfirmView(APIView):
+    def post(self, request):
+        serializer = SetNewPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Password has been reset successfully"}, status=200)
+        return Response(serializer.errors, status=400)
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
