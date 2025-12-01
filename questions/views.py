@@ -8,7 +8,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-# Create your views here.
+from rest_framework.generics import RetrieveUpdateDestroyAPIView
+from .permissions import IsOwnerOrReadOnly
 
 class CategoryListCreateView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
@@ -20,15 +21,7 @@ class TagListCreateView(generics.ListCreateAPIView):
     serializer_class = TagSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-class QuestionListView(generics.ListAPIView):
-    queryset = Question.objects.all().order_by('-created_at')
-    serializer_class = QuestionSerializer
-
-class QuestionDetailView(generics.RetrieveAPIView):
-    queryset = Question.objects.all()
-    serializer_class = QuestionSerializer
-    permission_classes = [permissions.AllowAny]
-
+ 
 class QuestionListCreateView(generics.ListCreateAPIView):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
@@ -67,6 +60,34 @@ class AnswerListCreateView(APIView):
             return Response(AnswerSerializer(answer).data, status=201)
 
         return Response(serializer.errors, status=400)
+
+# UPDATE OR DELETE VIEWS
+class TagDetailView(RetrieveUpdateDestroyAPIView):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    permissions_class = [permissions.IsAuthenticated]
+
+class CategoryDetailView(RetrieveUpdateDestroyAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.IsAdminUser]
+
+class QuestionDetailView(RetrieveUpdateDestroyAPIView):
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+
+    def perform_update(self, serializer): 
+        serializer.save()
+
+class AnswerDetailView(RetrieveUpdateDestroyAPIView):
+    queryset = Answer.objects.all()
+    serializer_class = AnswerSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+
+    def perform_update(self, serializer):
+        serializer.save()
+
 
 # class QuestionLikeView(APIView):
 #     permission_classes = [permissions.IsAuthenticated]
