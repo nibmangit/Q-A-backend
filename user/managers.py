@@ -8,10 +8,14 @@ class UserManager(BaseUserManager):
 
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
+
         user.set_password(password)
-        user.is_active = True
-        user.is_staff = False
-        user.is_superuser = False
+
+        # Use defaults only if not provided
+        user.is_active = extra_fields.get("is_active", True)
+        user.is_staff = extra_fields.get("is_staff", False)
+        user.is_superuser = extra_fields.get("is_superuser", False)
+
         user.save(using=self._db)
         return user
 

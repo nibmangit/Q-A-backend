@@ -70,7 +70,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'name', 'role', 'points', 'bio', 'badges', 'avatar']
+        fields = ['id', 'email', 'name', 'role', 'points', 'bio','is_superuser', 'badges', 'avatar']
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
