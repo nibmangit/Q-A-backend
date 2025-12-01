@@ -12,6 +12,19 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ['id', 'name', 'icon', 'count']
 
+class AnswerSerializer(serializers.ModelSerializer):
+    author = serializers.EmailField(source="author.email", read_only=True)
+
+    class Meta:
+        model = Answer
+        fields = [
+            "id", "question", "author", "body",
+            "likes", "dislikes",
+            "created_at", "updated_at"
+        ]
+        read_only_fields = ("likes", "dislikes", "author")
+
+
 class QuestionSerializer(serializers.ModelSerializer):
     author = serializers.StringRelatedField(read_only=True)
     category = serializers.PrimaryKeyRelatedField(
@@ -24,12 +37,14 @@ class QuestionSerializer(serializers.ModelSerializer):
         many=True,
         required=False
     )
+    answers = AnswerSerializer(many=True, read_only=True)  # or source='answer_list' depending on related_name
+    image = serializers.ImageField(required=False)
 
     class Meta:
         model = Question
         fields = [
             "id", "title", "body", "author",
-            "category", "tags", "likes", "dislikes",
+            "category", "tags", "likes", "dislikes",'answers',
             "answers_count", "image", "created_at", "updated_at"
         ]
 
@@ -39,10 +54,3 @@ class QuestionSerializer(serializers.ModelSerializer):
         question.tags.set(tags)
         return question
 
-class AnswerSerializer(serializers.ModelSerializer):
-    author = serializers.StringRelatedField(read_only=True)  # shows user email
-    question = serializers.PrimaryKeyRelatedField(read_only=True)  # we set question in view
-
-    class Meta:
-        model = Answer
-        fields = ['id', 'question', 'author', 'body', 'likes', 'dislikes', 'created_at', 'updated_at']
