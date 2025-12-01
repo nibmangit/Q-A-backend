@@ -18,6 +18,7 @@ class Tag(models.Model):
         return self.name
 
 
+
 class Question(models.Model):
     title = models.CharField(max_length=200)
     body = models.TextField()
@@ -46,3 +47,29 @@ class Answer(models.Model):
 
     def __str__(self):
         return f"Answer by {self.author.email} on {self.question.title}"
+
+
+class QuestionLike(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="likes_users")
+    is_like = models.BooleanField() 
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'question')  # prevent multiple likes/dislikes by same user
+
+    def __str__(self):
+        return f"{self.user.email} -> {'Like' if self.is_like else 'Dislike'} for {self.question.title}"
+
+
+class AnswerLike(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    answer = models.ForeignKey(Answer, on_delete=models.CASCADE, related_name="likes_users")
+    is_like = models.BooleanField() 
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'answer')  # prevent multiple likes/dislikes by same user
+
+    def __str__(self):
+        return f"{self.user.email} -> {'Like' if self.is_like else 'Dislike'} for Answer {self.answer.id}"

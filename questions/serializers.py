@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from questions.models import Question, Answer, Category, Tag
+from questions.models import (Question, Answer, Category, Tag,
+                              QuestionLike)
 from user.models import User
 
 class TagSerializer(serializers.ModelSerializer):
@@ -13,6 +14,8 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'icon', 'count']
 
 class AnswerSerializer(serializers.ModelSerializer):
+    likes = serializers.SerializerMethodField()
+    dislikes = serializers.SerializerMethodField()
     author = serializers.EmailField(source="author.email", read_only=True)
 
     class Meta:
@@ -24,8 +27,16 @@ class AnswerSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ("likes", "dislikes", "author")
 
+    def get_likes(self, obj):
+        return obj.likes_users.filter(is_like=True).count()
+
+    def get_dislikes(self, obj):
+        return obj.likes_users.filter(is_like=False).count()
+
 
 class QuestionSerializer(serializers.ModelSerializer):
+    likes = serializers.SerializerMethodField()
+    dislikes = serializers.SerializerMethodField()
     author = serializers.StringRelatedField(read_only=True)
     category = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(),
@@ -53,4 +64,8 @@ class QuestionSerializer(serializers.ModelSerializer):
         question = Question.objects.create(**validated_data)
         question.tags.set(tags)
         return question
+    def get_likes(self, obj):
+        return obj.likes_users.filter(is_like=True).count()
 
+    def get_dislikes(self, obj):
+        return obj.likes_users.filter(is_like=False).count()

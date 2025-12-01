@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from rest_framework import generics,permissions
-from .models import Question, Answer, Category, Tag
+from .models import Question, Answer, Category, Tag, AnswerLike, QuestionLike
 from .serializers import (QuestionSerializer, AnswerSerializer, 
                           CategorySerializer, TagSerializer)
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -88,22 +88,64 @@ class AnswerDetailView(RetrieveUpdateDestroyAPIView):
     def perform_update(self, serializer):
         serializer.save()
 
+#Likes and Dislikes
 
-# class QuestionLikeView(APIView):
-#     permission_classes = [permissions.IsAuthenticated]
+class AnswerLikeToggleView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
-#     def post(self, request, pk):
-#         q = get_object_or_404(Question, pk=pk)
-#         q.likes = q.likes +1
-#         q.save(update_fields=['likes'])
-#         return Response({'likes':q.likes}, status=status.HTTP_200_OK)
-    
-# class QuestionDislikeView(APIView):
-#     permission_classes = [permissions.IsAuthenticated]
+    def post(self, request, pk):
+        try:
+            answer = Answer.objects.get(pk=pk)
+        except Answer.DoesNotExist:
+            return Response({"error": "Answer not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        is_like = request.data.get('is_like', True)  # default True if not provided
+        user = request.user
+ 
+        existing = AnswerLike.objects.filter(answer=answer, user=user).first()
 
-#     def pest(self, request, pk):
-#         q = get_object_or_404(Question, pk = pk)
-#         q.dislikes = q.dislikes + 1
-#         q.save(update_fields=['dislikes'])
+        if existing:
+            # If the user already liked/disliked, remove it
+            existing.delete()
+            if existing.is_like:
+                answer.likes -= 1
+            else:
+                answer.dislikes -= 1
+        else:
+            # Create new like/dislike
+            AnswerLike.objects.create(answer=answer, user=user, is_like=is_like)
+            if is_like:
+                answer.likes += 1
+            else:
+                answer.dislikes += 1
 
-#         return Response({'dislikes':q.dislikes}, status=status.HTTP_200_OK)
+        answer.save()
+        return Response({ "likes": answer.likes, "dislikes": answer.dislikes }, status=status.HTTP_200_OK)
+ 
+class QuestionLikeToggleView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            question = Question.objects.get(pk=pk)
+        except Question.DoesNotExist:
+            return Response({"error": "Question not found"}, status=404)
+
+        is_like = request.data.get('is_like', True)
+
+        # Check if user already liked/disliked
+        existing = QuestionLike.objects.filter(question=question, user=request.user).first()
+        if existing:
+            if existing.is_like == is_like:
+                # same action, remove it
+                existing.delete()
+                return Response({"message": "Like/dislike removed"})
+            else:
+                # different action, update it
+                existing.is_like = is_like
+                existing.save()
+                return Response({"message": "Like/dislike updated"})
+
+        # create new like/dislike
+        QuestionLike.objects.create(question=question, user=request.user, is_like=is_like)
+        return Response({"message": "Like/dislike added"})
