@@ -4,7 +4,8 @@ from .views import (QuestionListCreateView, CategoryListCreateView,
                     AnswerListCreateView, AnswerDetailView,
                     TagDetailView,CategoryDetailView,
                     AnswerLikeToggleView, QuestionLikeToggleView,
-                    AnswerCommentListCreateView, AnswerCommentDetailView
+                    AnswerCommentListCreateView, AnswerCommentDetailView,
+                    ToggleBookmarkView, UserBookmarksView
                     )
 
 urlpatterns = [
@@ -25,5 +26,9 @@ urlpatterns = [
     #comments 
     path("answers/<int:answer_id>/comments/", AnswerCommentListCreateView.as_view(), name="comment-create"),
     path("answers/comments/<int:pk>/", AnswerCommentDetailView.as_view(), name="comment-detail"),
+
+    #Book mark
+    path('questions/<int:pk>/bookmark/', ToggleBookmarkView.as_view(), name='question-bookmark-toggle'),
+    path('bookmarks/', UserBookmarksView.as_view(), name='user-bookmarks'),
 ]
 #http://127.0.0.1:8000/api/questions/answers/?question=6 get all answer for question 6

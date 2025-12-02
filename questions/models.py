@@ -86,3 +86,14 @@ class AnswerComment(models.Model):
 
     def __str__(self):
         return f"Commented by {self.author.email} on Answer {self.answer.id}"
+    
+class QuestionBookmark(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="question_bookmarks")
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="bookmarked_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "question")
+
+    def __str__(self):
+        return f"{self.user.email} bookmarked {self.question.title}"

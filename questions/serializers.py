@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from questions.models import (Question, Answer, Category, Tag,
-                              AnswerComment)
+                              AnswerComment, QuestionBookmark)
 from user.models import User
 
 class TagSerializer(serializers.ModelSerializer):
@@ -46,22 +46,20 @@ class AnswerSerializer(serializers.ModelSerializer):
     def get_comment_count(self, obj):
         return obj.comments.count()
 
+class BookmarkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuestionBookmark
+        fields = ['id', 'user', 'question', 'created_at']
+        read_only_fields = ['user']
 
-class QuestionSerializer(serializers.ModelSerializer):
+class QuestionSerializer(serializers.ModelSerializer): 
+    is_bookmarked = serializers.SerializerMethodField()
     likes = serializers.SerializerMethodField()
     dislikes = serializers.SerializerMethodField()
     author = serializers.StringRelatedField(read_only=True)
-    category = serializers.PrimaryKeyRelatedField(
-        queryset=Category.objects.all(),
-        required=False,
-        allow_null=True
-    )
-    tags = serializers.PrimaryKeyRelatedField(
-        queryset=Tag.objects.all(),
-        many=True,
-        required=False
-    )
-    answers = AnswerSerializer(many=True, read_only=True)  # or source='answer_list' depending on related_name
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), required=False, allow_null=True )
+    tags = serializers.PrimaryKeyRelatedField( queryset=Tag.objects.all(), many=True, required=False )
+    answers = AnswerSerializer(many=True, read_only=True) 
     image = serializers.ImageField(required=False)
 
     class Meta:
@@ -69,7 +67,7 @@ class QuestionSerializer(serializers.ModelSerializer):
         fields = [
             "id", "title", "body", "author",
             "category", "tags", "likes", "dislikes",'answers',
-            "answers_count", "image", "created_at", "updated_at"
+            "answers_count", "image", "created_at", "updated_at",'is_bookmarked',
         ]
 
     def create(self, validated_data):
@@ -79,7 +77,11 @@ class QuestionSerializer(serializers.ModelSerializer):
         return question
     def get_likes(self, obj):
         return obj.likes_users.filter(is_like=True).count()
-
     def get_dislikes(self, obj):
         return obj.likes_users.filter(is_like=False).count()
-
+     
+    def get_is_bookmarked(self, obj):
+        user = self.context["request"].user
+        if user.is_anonymous:
+            return False
+        return obj.bookmarked_by.filter(user=user).exists()

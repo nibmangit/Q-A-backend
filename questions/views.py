@@ -1,10 +1,10 @@
 from django.shortcuts import render
 from rest_framework import generics,permissions
 from .models import (Question, Answer, Category, Tag, AnswerLike, QuestionLike,
-                     AnswerComment)
+                     AnswerComment, QuestionBookmark)
 from .serializers import (QuestionSerializer, AnswerSerializer, 
                           CategorySerializer, TagSerializer,
-                          AnswerCommentSerializer)
+                          AnswerCommentSerializer, BookmarkSerializer)
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -168,3 +168,28 @@ class AnswerCommentDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = AnswerComment.objects.all()
     serializer_class = AnswerCommentSerializer
     permission_classes = [IsOwnerOrReadOnly, permissions.IsAuthenticatedOrReadOnly]
+
+class ToggleBookmarkView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        question = Question.objects.get(id=pk)
+
+        bookmark, created = QuestionBookmark.objects.get_or_create(
+            user=request.user,
+            question=question
+        )
+
+        if not created:
+            bookmark.delete()
+            return Response({"message": "Bookmark removed"}, status=200)
+
+        return Response({"message": "Bookmarked successfully"}, status=201)
+
+class UserBookmarksView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        bookmarks = QuestionBookmark.objects.filter(user=request.user)
+        serializer = BookmarkSerializer(bookmarks, many=True)
+        return Response(serializer.data)
