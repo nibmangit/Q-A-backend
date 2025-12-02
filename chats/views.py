@@ -1,0 +1,91 @@
+from django.shortcuts import render
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions
+from rest_framework import status
+
+from .models import Conversation, Message
+from .serializers import ConversationSerializer, MessageSerializer
+from user.models import User
+ 
+
+class ConversationListCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request): 
+        conversations = Conversation.objects.filter(participants=request.user).order_by('-messages__created_at').distinct()
+        serializer = ConversationSerializer(conversations, many=True, context={"request": request})
+        return Response(serializer.data)
+    
+    def post(self, request):
+        # Create or return existing conversation
+        other_user_id = request.data.get("userId")
+        if not other_user_id:
+            return Response({"error": "userId is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            other_user = User.objects.get(id=other_user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if conversation already exists
+        conversation = Conversation.objects.filter(participants=request.user).filter(participants=other_user).first()
+        if conversation:
+            serializer = ConversationSerializer(conversation, context={"request": request})
+            return Response(serializer.data)
+
+        # Create new conversation
+        conversation = Conversation.objects.create()
+        conversation.participants.add(request.user, other_user)
+        serializer = ConversationSerializer(conversation, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+class MessageListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, conversation_id):
+        try:
+            conversation = Conversation.objects.get(id=conversation_id)
+        except Conversation.DoesNotExist:
+            return Response({"error": "Conversation not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if user is participant
+        if request.user not in conversation.participants.all():
+            return Response({"error": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
+
+        messages = conversation.messages.order_by("created_at")
+        serializer = MessageSerializer(messages, many=True)
+        
+        # Mark unread messages as read
+        conversation.messages.filter(read=False).exclude(sender=request.user).update(read=True)
+        
+        return Response(serializer.data)
+
+class MessageCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, conversation_id):
+        try:
+            conversation = Conversation.objects.get(id=conversation_id)
+        except Conversation.DoesNotExist:
+            return Response({"error": "Conversation not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.user not in conversation.participants.all():
+            return Response({"error": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
+
+        body = request.data.get("body")
+        if not body:
+            return Response({"error": "Message body is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Determine receiver (for 1-to-1 chat)
+        receiver = conversation.participants.exclude(id=request.user.id).first()
+
+        message = Message.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            receiver=receiver,
+            body=body
+        )
+
+        serializer = MessageSerializer(message)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
