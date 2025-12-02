@@ -1,8 +1,10 @@
 from django.shortcuts import render
 from rest_framework import generics,permissions
-from .models import Question, Answer, Category, Tag, AnswerLike, QuestionLike
+from .models import (Question, Answer, Category, Tag, AnswerLike, QuestionLike,
+                     AnswerComment)
 from .serializers import (QuestionSerializer, AnswerSerializer, 
-                          CategorySerializer, TagSerializer)
+                          CategorySerializer, TagSerializer,
+                          AnswerCommentSerializer)
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -104,15 +106,13 @@ class AnswerLikeToggleView(APIView):
  
         existing = AnswerLike.objects.filter(answer=answer, user=user).first()
 
-        if existing:
-            # If the user already liked/disliked, remove it
+        if existing: 
             existing.delete()
             if existing.is_like:
                 answer.likes -= 1
             else:
                 answer.dislikes -= 1
-        else:
-            # Create new like/dislike
+        else: 
             AnswerLike.objects.create(answer=answer, user=user, is_like=is_like)
             if is_like:
                 answer.likes += 1
@@ -129,23 +129,42 @@ class QuestionLikeToggleView(APIView):
         try:
             question = Question.objects.get(pk=pk)
         except Question.DoesNotExist:
-            return Response({"error": "Question not found"}, status=404)
+            return Response({"error": "Question not found"}, status=status.HTTP_404_NOT_FOUND)
 
         is_like = request.data.get('is_like', True)
-
-        # Check if user already liked/disliked
+ 
         existing = QuestionLike.objects.filter(question=question, user=request.user).first()
         if existing:
-            if existing.is_like == is_like:
-                # same action, remove it
-                existing.delete()
-                return Response({"message": "Like/dislike removed"})
+            existing.delete()
+            if existing.is_like:
+                question.likes -=1
             else:
-                # different action, update it
-                existing.is_like = is_like
-                existing.save()
-                return Response({"message": "Like/dislike updated"})
+                question.dislikes -=1
+        else:
+            QuestionLike.objects.create(question=question, user=request.user, is_like=is_like)
+            if is_like:
+                question.likes +=1
+            else:
+                question.dislikes +=1
+        
+        question.save()
+        return Response({"likes": question.likes, "dislikes":question.dislikes}, status=status.HTTP_200_OK)
+    
+# comments for answers
 
-        # create new like/dislike
-        QuestionLike.objects.create(question=question, user=request.user, is_like=is_like)
-        return Response({"message": "Like/dislike added"})
+class AnswerCommentListCreateView(generics.ListCreateAPIView):
+    serializer_class = AnswerCommentSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        answer_id = self.kwargs["answer_id"]
+        return AnswerComment.objects.filter(answer_id=answer_id)
+
+    def perform_create(self, serializer):
+        answer = get_object_or_404(Answer, id=self.kwargs["answer_id"])
+        serializer.save(author=self.request.user, answer=answer)
+
+class AnswerCommentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = AnswerComment.objects.all()
+    serializer_class = AnswerCommentSerializer
+    permission_classes = [IsOwnerOrReadOnly, permissions.IsAuthenticatedOrReadOnly]

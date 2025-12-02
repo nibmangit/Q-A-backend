@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from questions.models import (Question, Answer, Category, Tag,
-                              QuestionLike)
+                              AnswerComment)
 from user.models import User
 
 class TagSerializer(serializers.ModelSerializer):
@@ -13,16 +13,26 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ['id', 'name', 'icon', 'count']
 
+class AnswerCommentSerializer(serializers.ModelSerializer):
+    author = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = AnswerComment
+        fields = ["id", "answer", "author", "body", "created_at","updated_at"]
+        read_only_fields = ["id", "author", "created_at","updated_at", "answer"]
+
 class AnswerSerializer(serializers.ModelSerializer):
     likes = serializers.SerializerMethodField()
     dislikes = serializers.SerializerMethodField()
     author = serializers.EmailField(source="author.email", read_only=True)
+    comments = AnswerCommentSerializer(many=True, read_only=True)
+    comment_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Answer
         fields = [
             "id", "question", "author", "body",
-            "likes", "dislikes",
+            "likes", "dislikes","comments", "comment_count",
             "created_at", "updated_at"
         ]
         read_only_fields = ("likes", "dislikes", "author")
@@ -32,6 +42,9 @@ class AnswerSerializer(serializers.ModelSerializer):
 
     def get_dislikes(self, obj):
         return obj.likes_users.filter(is_like=False).count()
+    
+    def get_comment_count(self, obj):
+        return obj.comments.count()
 
 
 class QuestionSerializer(serializers.ModelSerializer):
@@ -69,3 +82,4 @@ class QuestionSerializer(serializers.ModelSerializer):
 
     def get_dislikes(self, obj):
         return obj.likes_users.filter(is_like=False).count()
+
