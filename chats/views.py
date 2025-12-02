@@ -13,7 +13,7 @@ class ConversationListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request): 
-        conversations = Conversation.objects.filter(participants=request.user).order_by('-messages__created_at').distinct()
+        conversations = Conversation.objects.filter(participants=request.user).order_by('-created_at').distinct()
         serializer = ConversationSerializer(conversations, many=True, context={"request": request})
         return Response(serializer.data)
     

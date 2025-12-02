@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'user',
     'chats',
+    'announcements',
     'questions',
     'cloudinary',
     'cloudinary_storage',
