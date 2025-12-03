@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'user',
     'chats',
     'announcements',
+    'notifications',
     'questions',
     'cloudinary',
     'cloudinary_storage',

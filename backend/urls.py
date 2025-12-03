@@ -23,5 +23,6 @@ urlpatterns = [
     path('api/questions/', include('questions.urls')),
     path('api/chats/', include('chats.urls')),
     path('api/announcements/', include('announcements.urls')),
+    path('api/notifications/', include('notifications.urls')),
 
 ]
