@@ -12,6 +12,8 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from .permissions import IsOwnerOrReadOnly
+from notifications.utils import create_notification
+
 
 class CategoryListCreateView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
@@ -58,6 +60,15 @@ class AnswerListCreateView(APIView):
             question = answer.question
             question.answers_count += 1
             question.save(update_fields=['answers_count'])
+
+            if question.author != request.user:
+                create_notification(
+                    user=question.author,
+                    noti_type="answer",
+                    message=f"{request.user.name} answerd your question: '{question.title}'",
+                    related_object_id=answer.id,
+                    related_object_type="Answer"
+                )
 
             return Response(AnswerSerializer(answer).data, status=201)
 
@@ -119,6 +130,24 @@ class AnswerLikeToggleView(APIView):
             else:
                 answer.dislikes += 1
 
+            if answer.author != user:
+                if is_like:
+                    create_notification(
+                        user=answer.author,
+                        noti_type="like",
+                        message=f"{user.name} liked your answer.",
+                        related_object_id=answer.id,
+                        related_object_type="Answer"
+                    )
+                else:
+                    create_notification(
+                        user=answer.author,
+                        noti_type="dislike", 
+                        message=f"{user.name} disliked your answer.",
+                        related_object_id=answer.id,
+                        related_object_type="Answer"
+                    )
+
         answer.save()
         return Response({ "likes": answer.likes, "dislikes": answer.dislikes }, status=status.HTTP_200_OK)
  
@@ -135,18 +164,34 @@ class QuestionLikeToggleView(APIView):
  
         existing = QuestionLike.objects.filter(question=question, user=request.user).first()
         if existing:
-            existing.delete()
             if existing.is_like:
                 question.likes -=1
             else:
                 question.dislikes -=1
+            existing.delete()
         else:
             QuestionLike.objects.create(question=question, user=request.user, is_like=is_like)
             if is_like:
                 question.likes +=1
             else:
                 question.dislikes +=1
-        
+            if question.author != request.user:
+                if is_like:
+                    create_notification(
+                        user=question.author,
+                        noti_type="like",
+                        message=f"{request.user.name} liked your question: '{question.title}'",
+                        related_object_id=question.id,
+                        related_object_type="Question"
+                    )
+                else:
+                    create_notification(
+                        user=question.author,
+                        noti_type="dislike",
+                        message=f"{request.user.name} disliked your question: '{question.title}'",
+                        related_object_id=question.id,
+                        related_object_type="Question"
+                    )
         question.save()
         return Response({"likes": question.likes, "dislikes":question.dislikes}, status=status.HTTP_200_OK)
     
@@ -163,6 +208,15 @@ class AnswerCommentListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         answer = get_object_or_404(Answer, id=self.kwargs["answer_id"])
         serializer.save(author=self.request.user, answer=answer)
+
+        if answer.author != self.request.user:
+            create_notification(
+                user=answer.author,
+                noti_type="comment",
+                message=f"{self.request.user.name} commented on your answer",
+                related_object_id=answer.id,
+                related_object_type="Comment"
+            )
 
 class AnswerCommentDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = AnswerComment.objects.all()

@@ -4,6 +4,7 @@ from user.models import User
 class Notification(models.Model):
     NOTIFICATION_TYPES = [
         ('like', 'Like'),
+        ('dislike', 'Dislike'),
         ('answer', 'Answer'),
         ('comment', 'Comment'),
         ('message', 'Message'),
