@@ -8,6 +8,8 @@ class Notification(models.Model):
         ('answer', 'Answer'),
         ('comment', 'Comment'),
         ('message', 'Message'),
+        ('badge', 'Badge'),
+        ('announcement', 'Announcement'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')

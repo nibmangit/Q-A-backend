@@ -7,7 +7,7 @@ from rest_framework import status
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
 from user.models import User
- 
+from notifications.utils import create_notification
 
 class ConversationListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -88,4 +88,12 @@ class MessageCreateView(APIView):
         )
 
         serializer = MessageSerializer(message)
+        if receiver:
+            create_notification(
+                user=receiver,
+                noti_type="message",
+                message=f"{request.user.name} sent you a message",
+                related_object_id=message.id,
+                related_object_type="Message"
+            )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
