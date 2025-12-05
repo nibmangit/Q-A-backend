@@ -52,6 +52,8 @@ class QuestionListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
         check_question_badges(self.request.user)
+        self.request.user.points += 5
+        self.request.user.save()
 
 class AnswerListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -78,6 +80,9 @@ class AnswerListCreateView(APIView):
             question = answer.question
             question.answers_count += 1
             question.save(update_fields=['answers_count'])
+
+            request.user.points += 10
+            request.user.save()
 
 
             if question.author != request.user:
@@ -138,38 +143,34 @@ class AnswerLikeToggleView(APIView):
         existing = AnswerLike.objects.filter(answer=answer, user=user).first()
 
         if existing: 
-            existing.delete()
             if existing.is_like:
                 answer.likes -= 1
+                answer.author.points -= 2
             else:
                 answer.dislikes -= 1
+                answer.author.points += 1
+            existing.delete()
         else: 
             AnswerLike.objects.create(answer=answer, user=user, is_like=is_like)
             if is_like:
                 answer.likes += 1
+                answer.author.points += 2
                 check_answer_like_badges(answer)
             else:
                 answer.dislikes += 1
+                answer.author.points -= 1
 
             if answer.author != user:
-                if is_like:
-                    create_notification(
-                        user=answer.author,
-                        noti_type="like",
-                        message=f"{user.name} liked your answer.",
-                        related_object_id=answer.id,
-                        related_object_type="Answer"
-                    )
-                else:
-                    create_notification(
-                        user=answer.author,
-                        noti_type="dislike", 
-                        message=f"{user.name} disliked your answer.",
-                        related_object_id=answer.id,
-                        related_object_type="Answer"
-                    )
+                create_notification(
+                    user=answer.author,
+                    noti_type="like" if is_like else "dislike",
+                    message=f"{user.name} {'liked' if is_like else 'disliked'} your answer.",
+                    related_object_id=answer.id,
+                    related_object_type="Answer"
+                )
 
         answer.save()
+        answer.author.save()
         return Response({ "likes": answer.likes, "dislikes": answer.dislikes }, status=status.HTTP_200_OK)
  
 class QuestionLikeToggleView(APIView):
@@ -187,33 +188,29 @@ class QuestionLikeToggleView(APIView):
         if existing:
             if existing.is_like:
                 question.likes -=1
+                question.author.points -= 2
             else:
                 question.dislikes -=1
+                question.author.points += 1
             existing.delete()
         else:
             QuestionLike.objects.create(question=question, user=request.user, is_like=is_like)
             if is_like:
                 question.likes +=1
+                question.author.points += 2
             else:
                 question.dislikes +=1
-            if question.author != request.user:
-                if is_like:
+                question.author.points -= 1
+            if question.author != request.user: 
                     create_notification(
                         user=question.author,
-                        noti_type="like",
-                        message=f"{request.user.name} liked your question: '{question.title}'",
+                        noti_type={"like" if is_like else "dislike"},
+                        message=f"{request.user.name} {"liked" if is_like else "disliked"} your question: '{question.title}'",
                         related_object_id=question.id,
                         related_object_type="Question"
-                    )
-                else:
-                    create_notification(
-                        user=question.author,
-                        noti_type="dislike",
-                        message=f"{request.user.name} disliked your question: '{question.title}'",
-                        related_object_id=question.id,
-                        related_object_type="Question"
-                    )
+                    ) 
         question.save()
+        question.author.save() 
         return Response({"likes": question.likes, "dislikes":question.dislikes}, status=status.HTTP_200_OK)
     
 # comments for answers
@@ -231,6 +228,8 @@ class AnswerCommentListCreateView(generics.ListCreateAPIView):
         serializer.save(author=self.request.user, answer=answer)
 
         if answer.author != self.request.user:
+            answer.author.points +=1
+            answer.author.save()
             create_notification(
                 user=answer.author,
                 noti_type="comment",
@@ -257,7 +256,11 @@ class ToggleBookmarkView(APIView):
 
         if not created:
             bookmark.delete()
+            question.author.points -= 1
+            question.author.save()
             return Response({"message": "Bookmark removed"}, status=200)
+        question.author.points += 1
+        question.author.save()
 
         return Response({"message": "Bookmarked successfully"}, status=201)
 

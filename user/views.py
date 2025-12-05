@@ -1,4 +1,5 @@
 from rest_framework import status,generics,filters 
+from rest_framework.parsers import MultiPartParser, FormParser
 from .serializers import (
     UserRegisterSerializer,
     MyTokenObtainPairSerializer, UserProfileSerializer,
@@ -7,7 +8,7 @@ from .serializers import (
 )
 from rest_framework.response import Response 
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.views import APIView
 
 # For password Reset.
@@ -88,6 +89,7 @@ class ProfileView(generics.RetrieveAPIView):
 
 class ProfileUpdateView(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     def patch(self, request):
         user = request.user
@@ -118,3 +120,8 @@ class UserListView(generics.ListAPIView):
     search_fields = ["name", "email"]
     ordering_fields = ["points", "badges_count", "id"]
     ordering = ["-points"]
+
+class TopUsersView(generics.ListAPIView):
+    queryset = User.objects.all().order_by('-points')[:10]  # only top 10
+    serializer_class = PublicUserSerializer
+    permission_classes = [AllowAny]

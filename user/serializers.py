@@ -68,12 +68,14 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    avatar = serializers.ImageField(required=False)
     class Meta:
         model = User
         fields = ['id', 'email', 'name', 'role', 'points', 'bio','is_superuser', 'badges', 'avatar']
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    avatar = serializers.ImageField(required=False)
     class Meta:
         model = User 
         fields = ['name', 'bio', 'avatar']
@@ -107,7 +109,8 @@ class UserPasswordUpdateSerializer(serializers.Serializer):
         return user
     
 class PublicUserSerializer(serializers.ModelSerializer):
+    avatar = serializers.ImageField(read_only=True)
     class Meta:
         model = User
-        fields = [ "id", "name", "avatar", "bio", "points", "badges", "role"]
+        fields = [ "id", "name", "avatar", "bio", "points", "badges"]
         read_only_fields = fields
