@@ -16,7 +16,9 @@ from notifications.utils import create_notification
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import QuestionFilter
 from django.db.models import Count
-
+from .utils import (check_answer_badges, check_question_badges,
+                    check_answer_like_badges,
+)
 class CategoryListCreateView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -49,6 +51,7 @@ class QuestionListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+        check_question_badges(self.request.user)
 
 class AnswerListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -70,11 +73,12 @@ class AnswerListCreateView(APIView):
         serializer = AnswerSerializer(data=data)
         if serializer.is_valid():
             answer = serializer.save(author=request.user)
-
+            check_answer_badges(request.user)
             # update answers_count
             question = answer.question
             question.answers_count += 1
             question.save(update_fields=['answers_count'])
+
 
             if question.author != request.user:
                 create_notification(
@@ -88,6 +92,7 @@ class AnswerListCreateView(APIView):
             return Response(AnswerSerializer(answer).data, status=201)
 
         return Response(serializer.errors, status=400)
+ 
 
 # UPDATE OR DELETE VIEWS
 class TagDetailView(RetrieveUpdateDestroyAPIView):
@@ -142,6 +147,7 @@ class AnswerLikeToggleView(APIView):
             AnswerLike.objects.create(answer=answer, user=user, is_like=is_like)
             if is_like:
                 answer.likes += 1
+                check_answer_like_badges(answer)
             else:
                 answer.dislikes += 1
 

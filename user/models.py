@@ -32,7 +32,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-    
+    last_login_date = models.DateField(blank=True, null=True) 
+    login_streak = models.IntegerField(default=0) 
     objects = UserManager()  # link custom manager
 
     USERNAME_FIELD = "email"

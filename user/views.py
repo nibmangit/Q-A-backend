@@ -17,6 +17,7 @@ from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.core.mail import send_mail
 from django.db.models import Count
+from .utils import check_active_user_badge
 #rest password view
 User = get_user_model()
 class PasswordResetRequestView(generics.GenericAPIView):
@@ -55,7 +56,17 @@ class PasswordResetConfirmView(APIView):
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
-    serializer_class = MyTokenObtainPairSerializer
+    serializer_class = MyTokenObtainPairSerializer 
+
+    def post(self, request, *args, **kwargs): 
+        response = super().post(request, *args, **kwargs) 
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.user
+ 
+        check_active_user_badge(user) 
+        return response
+
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = UserRegisterSerializer
@@ -71,7 +82,7 @@ class ProfileView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user  # DRF automatically gets user from JWT
+        user = request.user 
         serializer = UserProfileSerializer(user)
         return Response(serializer.data)
 
