@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions,filters
 from .models import Announcement
 from .serializers import AnnouncementSerializer
 from django.contrib.auth import get_user_model
@@ -8,6 +8,8 @@ User = get_user_model()
 class AnnouncementListCreateView(generics.ListCreateAPIView):
     queryset = Announcement.objects.all().order_by('-date')
     serializer_class = AnnouncementSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["title", "body"]
 
     def get_permissions(self):
         if self.request.method == 'POST':

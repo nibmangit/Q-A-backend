@@ -106,3 +106,8 @@ class UserPasswordUpdateSerializer(serializers.Serializer):
         user.save()
         return user
     
+class PublicUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [ "id", "name", "avatar", "bio", "points", "badges", "role"]
+        read_only_fields = fields

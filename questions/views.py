@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from rest_framework import generics,permissions
+from rest_framework import generics,permissions, filters
 from .models import (Question, Answer, Category, Tag, AnswerLike, QuestionLike,
                      AnswerComment, QuestionBookmark)
 from .serializers import (QuestionSerializer, AnswerSerializer, 
@@ -13,7 +13,9 @@ from django.shortcuts import get_object_or_404
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from .permissions import IsOwnerOrReadOnly
 from notifications.utils import create_notification
-
+from django_filters.rest_framework import DjangoFilterBackend
+from .filters import QuestionFilter
+from django.db.models import Count
 
 class CategoryListCreateView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
@@ -27,13 +29,26 @@ class TagListCreateView(generics.ListCreateAPIView):
 
  
 class QuestionListCreateView(generics.ListCreateAPIView):
-    queryset = Question.objects.all()
+    queryset = Question.objects.all().annotate(
+        likes_total=Count("likes", distinct=True),
+        answers_total=Count("answers", distinct=True)
+    )
     serializer_class = QuestionSerializer
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]  # For image upload
+    parser_classes = [MultiPartParser, FormParser]
+    filter_backends = [DjangoFilterBackend,filters.SearchFilter]
+    search_fields = ["title","body"]
+    filterset_class = QuestionFilter
+    ordering_fields = ["likes_total", "answers_total", "created_at"]
+    ordering = ["-created_at"]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user)  # Set author automatically
+        serializer.save(author=self.request.user)
 
 class AnswerListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]

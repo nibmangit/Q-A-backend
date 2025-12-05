@@ -1,12 +1,11 @@
-from rest_framework import generics
+from rest_framework import status,generics,filters 
 from .serializers import (
     UserRegisterSerializer,
     MyTokenObtainPairSerializer, UserProfileSerializer,
     UserProfileUpdateSerializer, UserPasswordUpdateSerializer,
-    SetNewPasswordSerializer
+    SetNewPasswordSerializer,PublicUserSerializer
 )
-from rest_framework.response import Response
-from rest_framework import status
+from rest_framework.response import Response 
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -17,7 +16,7 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.core.mail import send_mail
-
+from django.db.models import Count
 #rest password view
 User = get_user_model()
 class PasswordResetRequestView(generics.GenericAPIView):
@@ -98,3 +97,13 @@ class PasswordUpdateView(APIView):
             return Response({"detail": "Password updated successfully"})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+class UserListView(generics.ListAPIView):
+    queryset = User.objects.all().annotate(
+        badges_count=Count("badges")
+    )
+    serializer_class = PublicUserSerializer 
+    permission_classes = [IsAuthenticated] 
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name", "email"]
+    ordering_fields = ["points", "badges_count", "id"]
+    ordering = ["-points"]

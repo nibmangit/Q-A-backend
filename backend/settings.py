@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'questions',
     'cloudinary',
     'cloudinary_storage',
+    'django_filters',
 ]
 
 MIDDLEWARE = [
