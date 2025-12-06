@@ -3,6 +3,7 @@ from .models import Announcement
 from .serializers import AnnouncementSerializer
 from django.contrib.auth import get_user_model
 from notifications.utils import create_notification
+from questions.pagination import StandardResultsSetPagination
 
 User = get_user_model()
 class AnnouncementListCreateView(generics.ListCreateAPIView):
@@ -10,6 +11,7 @@ class AnnouncementListCreateView(generics.ListCreateAPIView):
     serializer_class = AnnouncementSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ["title", "body"]
+    pagination_class = StandardResultsSetPagination
 
     def get_permissions(self):
         if self.request.method == 'POST':

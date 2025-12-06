@@ -8,14 +8,17 @@ from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
 from user.models import User
 from notifications.utils import create_notification
+from questions.pagination import StandardResultsSetPagination
 
 class ConversationListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request): 
         conversations = Conversation.objects.filter(participants=request.user).order_by('-created_at').distinct()
-        serializer = ConversationSerializer(conversations, many=True, context={"request": request})
-        return Response(serializer.data)
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(conversations, request)
+        serializer = ConversationSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
     
     def post(self, request):
         # Create or return existing conversation
@@ -49,17 +52,18 @@ class MessageListView(APIView):
         except Conversation.DoesNotExist:
             return Response({"error": "Conversation not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Check if user is participant
+        
         if request.user not in conversation.participants.all():
             return Response({"error": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
 
-        messages = conversation.messages.order_by("created_at")
-        serializer = MessageSerializer(messages, many=True)
+        messages = conversation.messages.order_by("-created_at")
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(messages, request)
+        serializer = MessageSerializer(page, many=True)
         
-        # Mark unread messages as read
         conversation.messages.filter(read=False).exclude(sender=request.user).update(read=True)
         
-        return Response(serializer.data)
+        return paginator.get_paginated_response(serializer.data)
 
 class MessageCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]

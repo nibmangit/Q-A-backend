@@ -19,6 +19,9 @@ from django.db.models import Count
 from .utils import (check_answer_badges, check_question_badges,
                     check_answer_like_badges,
 )
+from .pagination import StandardResultsSetPagination
+
+
 class CategoryListCreateView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -35,14 +38,14 @@ class QuestionListCreateView(generics.ListCreateAPIView):
         likes_total=Count("likes", distinct=True),
         answers_total=Count("answers", distinct=True)
     )
-    serializer_class = QuestionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = QuestionSerializer 
     parser_classes = [MultiPartParser, FormParser]
     filter_backends = [DjangoFilterBackend,filters.SearchFilter]
     search_fields = ["title","body"]
     filterset_class = QuestionFilter
     ordering_fields = ["likes_total", "answers_total", "created_at"]
     ordering = ["-created_at"]
+    pagination_class = StandardResultsSetPagination
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -63,10 +66,13 @@ class AnswerListCreateView(APIView):
 
         if not question_id:
             return Response({"error": "question query parameter is required"}, status=400)
+        
+        answers = Answer.objects.filter(question_id=question_id).order_by("-created_at")
+        paginator = StandardResultsSetPagination()
+        result_page = paginator.paginate_queryset(answers, request)
 
-        answers = Answer.objects.filter(question_id=question_id).order_by('-created_at')
-        serializer = AnswerSerializer(answers, many=True)
-        return Response(serializer.data)
+        serializer = AnswerSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
         data = request.data.copy()
@@ -218,10 +224,11 @@ class QuestionLikeToggleView(APIView):
 class AnswerCommentListCreateView(generics.ListCreateAPIView):
     serializer_class = AnswerCommentSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         answer_id = self.kwargs["answer_id"]
-        return AnswerComment.objects.filter(answer_id=answer_id)
+        return AnswerComment.objects.filter(answer_id=answer_id).order_by('-created_at')
 
     def perform_create(self, serializer):
         answer = get_object_or_404(Answer, id=self.kwargs["answer_id"])
