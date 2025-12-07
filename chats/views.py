@@ -9,6 +9,7 @@ from .serializers import ConversationSerializer, MessageSerializer
 from user.models import User
 from notifications.utils import create_notification
 from questions.pagination import StandardResultsSetPagination
+from rest_framework.throttling import ScopedRateThrottle
 
 class ConversationListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -67,6 +68,8 @@ class MessageListView(APIView):
 
 class MessageCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = 'send_message'
 
     def post(self, request, conversation_id):
         try:

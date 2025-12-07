@@ -90,7 +90,20 @@ DATABASES = {
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.ScopedRateThrottle',  # allows per-endpoint limits
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'post_question': '2/minute', 
+        'post_answer': '2/minute', 
+        'post_comment': '5/minute', 
+        'like_answer': '5/minute', 
+        'like_question': '5/minute', 
+        'bookmark': '5/minute',
+
+        'send_message': '20/minute',
+    }
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

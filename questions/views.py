@@ -20,6 +20,7 @@ from .utils import (check_answer_badges, check_question_badges,
                     check_answer_like_badges,
 )
 from .pagination import StandardResultsSetPagination
+from rest_framework.throttling import ScopedRateThrottle
 
 
 class CategoryListCreateView(generics.ListCreateAPIView):
@@ -46,6 +47,8 @@ class QuestionListCreateView(generics.ListCreateAPIView):
     ordering_fields = ["likes_total", "answers_total", "created_at"]
     ordering = ["-created_at"]
     pagination_class = StandardResultsSetPagination
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'post_question'
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -60,6 +63,8 @@ class QuestionListCreateView(generics.ListCreateAPIView):
 
 class AnswerListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'post_answer'
 
     def get(self, request): 
         question_id = request.query_params.get("question")
@@ -136,6 +141,8 @@ class AnswerDetailView(RetrieveUpdateDestroyAPIView):
 
 class AnswerLikeToggleView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'like_answer'
 
     def post(self, request, pk):
         try:
@@ -181,6 +188,8 @@ class AnswerLikeToggleView(APIView):
  
 class QuestionLikeToggleView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'like_question'
 
     def post(self, request, pk):
         try:
@@ -225,6 +234,8 @@ class AnswerCommentListCreateView(generics.ListCreateAPIView):
     serializer_class = AnswerCommentSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     pagination_class = StandardResultsSetPagination
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'post_comment'
 
     def get_queryset(self):
         answer_id = self.kwargs["answer_id"]
@@ -252,9 +263,14 @@ class AnswerCommentDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class ToggleBookmarkView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'bookmark'
 
     def post(self, request, pk):
-        question = Question.objects.get(id=pk)
+        try:
+            question = Question.objects.get(id=pk)
+        except Question.DoesNotExist:
+            return Response({"error": "Question not found"}, status=404)
 
         bookmark, created = QuestionBookmark.objects.get_or_create(
             user=request.user,
