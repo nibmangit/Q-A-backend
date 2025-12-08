@@ -75,7 +75,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
-    avatar = serializers.ImageField(required=False)
+    avatar = serializers.ImageField(required=False, allow_null=True)
     class Meta:
         model = User 
         fields = ['name', 'bio', 'avatar']
@@ -84,6 +84,18 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             'bio': {'required': False},
             'name': {'required': False},
         }
+        def validate_avatar(self, value): 
+            if value: 
+                valid_mime_types = ['image/jpeg', 'image/png', 'image/gif']
+                if value.content_type not in valid_mime_types:
+                    raise serializers.ValidationError("Unsupported file type. Allowed: jpg, png, gif.")
+ 
+                max_size = 5 * 1024 * 1024
+                if value.size > max_size:
+                    raise serializers.ValidationError("Avatar file too large. Max size is 5MB.")
+
+            return value
+
 
 
 class UserPasswordUpdateSerializer(serializers.Serializer):
