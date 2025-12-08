@@ -56,8 +56,12 @@ class QuestionListCreateView(generics.ListCreateAPIView):
         return [permissions.AllowAny()]
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
-        check_question_badges(self.request.user)
+        question = serializer.save(author=self.request.user)
+        if question.category:
+            question.category.count += 1
+            question.category.save()
+ 
+        check_question_badges(self.request.user) 
         self.request.user.points += 5
         self.request.user.save()
 
@@ -126,8 +130,27 @@ class QuestionDetailView(RetrieveUpdateDestroyAPIView):
     serializer_class = QuestionSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
 
-    def perform_update(self, serializer): 
-        serializer.save()
+    def perform_update(self, serializer):
+        old_question = self.get_object() 
+        old_category = old_question.category 
+
+        new_question = serializer.save() 
+        new_category = new_question.category
+ 
+        if old_category != new_category:
+            if old_category:
+                old_category.count -= 1
+                old_category.save()
+
+            if new_category:
+                new_category.count += 1
+                new_category.save()
+    
+    def perform_destroy(self, instance):
+        if instance.category:
+            instance.category.count -= 1
+            instance.category.save()
+        instance.delete()
 
 class AnswerDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Answer.objects.all()

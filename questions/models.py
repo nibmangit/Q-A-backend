@@ -46,7 +46,7 @@ class Answer(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Answer by {self.author.email} on {self.question.title}"
+        return f"Answer by {self.author.email} on question {self.question.id}"
 
 
 class QuestionLike(models.Model):
