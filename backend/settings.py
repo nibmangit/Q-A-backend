@@ -44,10 +44,12 @@ INSTALLED_APPS = [
     'questions',
     'cloudinary',
     'cloudinary_storage',
-    'django_filters', 
+    'django_filters',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -58,6 +60,12 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'backend.urls'
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 TEMPLATES = [
     {
@@ -160,4 +168,16 @@ CLOUDINARY_STORAGE = {
     'CLOUD_NAME': 'dahvdgqbf',
     'API_KEY': '251625242136878',
     'API_SECRET': '_gCb5ZqDUkQo2yEEFiKO9VJ386U',
+}
+
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }

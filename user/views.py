@@ -58,6 +58,7 @@ class PasswordResetConfirmView(APIView):
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer 
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs): 
         response = super().post(request, *args, **kwargs) 
@@ -71,6 +72,7 @@ class MyTokenObtainPairView(TokenObtainPairView):
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = UserRegisterSerializer
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
