@@ -26,12 +26,20 @@ from rest_framework.throttling import ScopedRateThrottle
 class CategoryListCreateView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [permissions.IsAdminUser]
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [permissions.IsAdminUser()]
+        return [permissions.AllowAny()]
 
 class TagListCreateView(generics.ListCreateAPIView):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [permissions.IsAdminUser()]
+        return [permissions.AllowAny()]
 
  
 class QuestionListCreateView(generics.ListCreateAPIView):
@@ -54,6 +62,11 @@ class QuestionListCreateView(generics.ListCreateAPIView):
         if self.request.method == "POST":
             return [permissions.IsAuthenticated()]
         return [permissions.AllowAny()]
+    
+    def get_throttles(self):
+        if self.request.method == "GET": 
+            return []
+        return super().get_throttles()
 
     def perform_create(self, serializer):
         question = serializer.save(author=self.request.user)
@@ -123,12 +136,23 @@ class TagDetailView(RetrieveUpdateDestroyAPIView):
 class CategoryDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [permissions.IsAdminUser]
+    
+    def get_permissions(self):
+        if self.request.method in ["PUT", "PATCH", "DELETE"]:
+            return [permissions.IsAdminUser()]
+        return [permissions.AllowAny()]
+    
 
 class QuestionDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+    
+    def get_permissions(self):
+        if self.request.method in ["PUT", "PATCH", "DELETE"]:
+            permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+        else:
+            permission_classes = [permissions.AllowAny]
+        return [permission() for permission in permission_classes]
 
     def perform_update(self, serializer):
         old_question = self.get_object() 

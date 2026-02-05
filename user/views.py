@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.views import APIView
+from django_filters.rest_framework import DjangoFilterBackend
 
 # For password Reset.
 from django.contrib.auth import get_user_model
@@ -81,6 +82,13 @@ class RegisterView(generics.CreateAPIView):
             return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class UserDetailView(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = PublicUserSerializer
+    permission_classes = [AllowAny]
+
+    lookup_field = "id"
+
 class ProfileView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -117,13 +125,21 @@ class UserListView(generics.ListAPIView):
         badges_count=Count("badges")
     )
     serializer_class = PublicUserSerializer 
-    permission_classes = [IsAuthenticated] 
-    filter_backends = [filters.SearchFilter]
+    permission_classes = [AllowAny] 
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['email']
     search_fields = ["name", "email"]
     ordering_fields = ["points", "badges_count", "id"]
     ordering = ["-points"]
 
-class TopUsersView(generics.ListAPIView):
-    queryset = User.objects.all().order_by('-points')[:10]  # only top 10
+class TopUsersView(generics.ListAPIView): 
     serializer_class = PublicUserSerializer
     permission_classes = [AllowAny]
+    
+    def get_queryset(self):
+        return User.objects.filter(
+            is_active=True,
+            is_superuser=False,
+            is_staff=False
+        ).order_by('-points')[:10]
+        
