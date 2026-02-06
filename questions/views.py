@@ -266,8 +266,8 @@ class QuestionLikeToggleView(APIView):
             if question.author != request.user: 
                     create_notification(
                         user=question.author,
-                        noti_type={"like" if is_like else "dislike"},
-                        message=f"{request.user.name} {"liked" if is_like else "disliked"} your question: '{question.title}'",
+                        noti_type="like" if is_like else "dislike",
+                        message=f"{request.user.name} {'liked' if is_like else 'disliked'} your question: '{question.title}'",
                         related_object_id=question.id,
                         related_object_type="Question"
                     ) 
