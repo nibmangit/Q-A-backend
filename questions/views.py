@@ -67,6 +67,11 @@ class QuestionListCreateView(generics.ListCreateAPIView):
         if self.request.method == "GET": 
             return []
         return super().get_throttles()
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
 
     def perform_create(self, serializer):
         question = serializer.save(author=self.request.user)
@@ -93,7 +98,7 @@ class AnswerListCreateView(APIView):
         paginator = StandardResultsSetPagination()
         result_page = paginator.paginate_queryset(answers, request)
 
-        serializer = AnswerSerializer(result_page, many=True)
+        serializer = AnswerSerializer(result_page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
@@ -122,7 +127,7 @@ class AnswerListCreateView(APIView):
                     related_object_type="Answer"
                 )
 
-            return Response(AnswerSerializer(answer).data, status=201)
+            return Response(AnswerSerializer(answer, context={'request': request}).data, status=201)
 
         return Response(serializer.errors, status=400)
  
@@ -146,6 +151,11 @@ class CategoryDetailView(RetrieveUpdateDestroyAPIView):
 class QuestionDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
     
     def get_permissions(self):
         if self.request.method in ["PUT", "PATCH", "DELETE"]:
@@ -174,7 +184,7 @@ class QuestionDetailView(RetrieveUpdateDestroyAPIView):
         if instance.category:
             instance.category.count -= 1
             instance.category.save()
-        instance.delete()
+        instance.delete() 
 
 class AnswerDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Answer.objects.all()
@@ -231,7 +241,11 @@ class AnswerLikeToggleView(APIView):
 
         answer.save()
         answer.author.save()
-        return Response({ "likes": answer.likes, "dislikes": answer.dislikes }, status=status.HTTP_200_OK)
+        current_vote = AnswerLike.objects.filter(answer=answer, user=user).first()
+        return Response({ "likes": answer.likes, "dislikes": answer.dislikes,
+                         "is_liked": current_vote.is_like if current_vote else False,
+                         "is_disliked": not current_vote.is_like if current_vote else False
+                         }, status=status.HTTP_200_OK)
  
 class QuestionLikeToggleView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -273,7 +287,11 @@ class QuestionLikeToggleView(APIView):
                     ) 
         question.save()
         question.author.save() 
-        return Response({"likes": question.likes, "dislikes":question.dislikes}, status=status.HTTP_200_OK)
+        current_vote = QuestionLike.objects.filter(question=question, user=request.user).first()
+        return Response({"likes": question.likes, "dislikes":question.dislikes,
+                         "is_liked": current_vote.is_like if current_vote else False,
+                         "is_disliked": not current_vote.is_like if current_vote else False
+                         }, status=status.HTTP_200_OK)
     
 # comments for answers
 
@@ -328,11 +346,11 @@ class ToggleBookmarkView(APIView):
             bookmark.delete()
             question.author.points -= 1
             question.author.save()
-            return Response({"message": "Bookmark removed"}, status=200)
+            return Response({"message": "Bookmark removed", "is_bookmarked": False}, status=200)
         question.author.points += 1
         question.author.save()
 
-        return Response({"message": "Bookmarked successfully"}, status=201)
+        return Response({"message": "Bookmarked successfully", "is_bookmarked": True}, status=201)
 
 class UserBookmarksView(APIView):
     permission_classes = [permissions.IsAuthenticated]
