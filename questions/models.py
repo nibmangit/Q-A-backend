@@ -24,7 +24,7 @@ class Question(models.Model):
     body = models.TextField()
     author = models.ForeignKey(User, on_delete=models.CASCADE)  # required
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
-    tags = models.ManyToManyField(Tag, blank=True)
+    tags = models.ManyToManyField(Tag, blank=True, related_name="tagged_questions")
     likes = models.IntegerField(default=0)
     dislikes = models.IntegerField(default=0)
     answers_count = models.IntegerField(default=0)

@@ -32,9 +32,11 @@ class CategoryListCreateView(generics.ListCreateAPIView):
             return [permissions.IsAdminUser()]
         return [permissions.AllowAny()]
 
-class TagListCreateView(generics.ListCreateAPIView):
-    queryset = Tag.objects.all()
+class TagListCreateView(generics.ListCreateAPIView): 
     serializer_class = TagSerializer
+    
+    def get_queryset(self):
+        return Tag.objects.annotate(count=Count('tagged_questions')).order_by('-count')
     
     def get_permissions(self):
         if self.request.method == "POST":
@@ -136,7 +138,7 @@ class AnswerListCreateView(APIView):
 class TagDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permissions_class = [permissions.IsAuthenticated]
+    permissions_class = [permissions.IsAdminUser]
 
 class CategoryDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
@@ -356,6 +358,6 @@ class UserBookmarksView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        bookmarks = QuestionBookmark.objects.filter(user=request.user)
-        serializer = BookmarkSerializer(bookmarks, many=True)
+        bookmarks = QuestionBookmark.objects.filter(user=request.user).select_related('question')
+        serializer = BookmarkSerializer(bookmarks, many=True, context={'request': request})
         return Response(serializer.data)

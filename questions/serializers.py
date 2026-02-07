@@ -4,9 +4,10 @@ from questions.models import (Question, Answer, Category, Tag,
 from user.models import User
 
 class TagSerializer(serializers.ModelSerializer):
+    count = serializers.IntegerField(read_only=True)
     class Meta:
         model = Tag
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'count']
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -59,12 +60,6 @@ class AnswerSerializer(serializers.ModelSerializer):
     
     def get_comment_count(self, obj):
         return obj.comments.count()
-
-class BookmarkSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = QuestionBookmark
-        fields = ['id', 'user', 'question', 'created_at']
-        read_only_fields = ['user']
 
 class QuestionSerializer(serializers.ModelSerializer): 
     is_bookmarked = serializers.SerializerMethodField()
@@ -125,3 +120,14 @@ class QuestionSerializer(serializers.ModelSerializer):
         if not request or not request.user or request.user.is_anonymous:
             return False
         return obj.bookmarked_by.filter(user=request.user).exists()
+
+class BookmarkSerializer(serializers.ModelSerializer):
+    question = QuestionSerializer(read_only=True)
+    class Meta:
+        model = QuestionBookmark
+        fields = ['id', 'user', 'question', 'created_at']
+        read_only_fields = ['user']
+        
+        def to_representation(self, instance):
+            self.fields['question'].context.update(self.context)
+            return super().to_representation(instance)
