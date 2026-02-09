@@ -5,7 +5,7 @@ class AnnouncementSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, allow_null=True)
     class Meta:
         model = Announcement
-        fields = ['id', 'title', 'body', 'author', 'tags', 'image', 'date']
+        fields = ['id', 'title', 'body', 'author', 'tags', 'image','is_pinned', 'date']
 
         def validate_image(self, value): 
             if value: 

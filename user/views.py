@@ -142,4 +142,5 @@ class TopUsersView(generics.ListAPIView):
             is_superuser=False,
             is_staff=False
         ).order_by('-points')[:10]
-        
+ 
+

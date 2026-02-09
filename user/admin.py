@@ -27,11 +27,11 @@ class UserAdmin(admin.ModelAdmin):
         self.message_user(request, f"Reset points for {updated} user(s).")
     reset_points.short_description = "Reset points to 0 for selected users"
  
-# @admin.register(Badge)
-# class BadgeAdmin(admin.ModelAdmin):
-#     list_display = ("name", "icon", "description")
-#     search_fields = ("name", "description") 
-#     list_per_page = 20 
+@admin.register(Badge)
+class BadgeAdmin(admin.ModelAdmin):
+    list_display = ("name", "icon", "description")
+    search_fields = ("name", "description") 
+    list_per_page = 20 
 
 admin.site.site_header = "Q&A Platform Admin"
 admin.site.site_title = "Q&A Admin Portal"
