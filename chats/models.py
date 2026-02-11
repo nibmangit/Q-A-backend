@@ -1,28 +1,38 @@
 from django.db import models
 from django.conf import settings
-# Create your models here.
-User = settings.AUTH_USER_MODEL
 
-class Conversation(models.Model):
-    participants = models.ManyToManyField(User, related_name="conversations")
+class DiscussionRoom(models.Model):
+    question = models.OneToOneField(
+        'questions.Question', 
+        on_delete=models.CASCADE, 
+        related_name='discussion_room'
+    )
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    participant_count = models.PositiveIntegerField(default=0)
 
     def __str__(self):
-        participant_names = ", ".join(
-            [p.name for p in self.participants.all()]
-        )
-        return f"Conversation between {participant_names}"
-    
+        return f"Room: {self.question.title[:30]}"
 
-class Message(models.Model):
-    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_messages")
-    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_messages" )
-    body = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    read = models.BooleanField(default=False)
+class ChatMessage(models.Model):
+    MESSAGE_TYPES = (
+        ('text', 'Plain Text'),
+        ('code', 'Code Snippet'),
+        ('image', 'Image'),
+        ('system', 'System Notification'),
+    )
+
+    room = models.ForeignKey(DiscussionRoom, on_delete=models.CASCADE, related_name='messages')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
+    content = models.TextField()
+    image = models.ImageField(upload_to='chat_images/', null=True, blank=True)
+    message_type = models.CharField(max_length=10, choices=MESSAGE_TYPES, default='text')
+    is_pinned = models.BooleanField(default=False)
+    reactions = models.JSONField(default=dict, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['timestamp']
 
     def __str__(self):
-        return f"Message from {self.sender} in {self.conversation.id}"
+        return f"{self.user.username if self.user else 'System'}: {self.content[:20]}"

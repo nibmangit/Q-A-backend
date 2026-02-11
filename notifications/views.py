@@ -11,7 +11,7 @@ class NotificationListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     def get_queryset(self):
-        return self.request.user.notifications.all().order_by('-created_at')
+        return self.request.user.notifications.all().order_by('read','-created_at')
 
 class NotificationMarkReadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
