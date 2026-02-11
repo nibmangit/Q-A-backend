@@ -85,25 +85,34 @@ class QuestionListCreateView(generics.ListCreateAPIView):
         self.request.user.points += 5
         self.request.user.save()
 
-class AnswerListCreateView(APIView):
+class AnswerListCreateView(APIView): 
     permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'post_answer'
+
+    def get_throttles(self): 
+        if self.request.method == "POST":
+            self.throttle_scope = 'post_answer'
+            return [ScopedRateThrottle()]
+        return []
 
     def get(self, request): 
         question_id = request.query_params.get("question")
-
-        if not question_id:
-            return Response({"error": "question query parameter is required"}, status=400)
+        author_id = request.query_params.get("author")
+ 
+        if author_id:
+            answers = Answer.objects.filter(author_id=author_id).order_by("-created_at")
+        elif question_id:
+            answers = Answer.objects.filter(question_id=question_id).order_by("-created_at")
+        else:
+            return Response({"error": "Either question or author parameter is required"}, status=400)
         
-        answers = Answer.objects.filter(question_id=question_id).order_by("-created_at")
+         
         paginator = StandardResultsSetPagination()
         result_page = paginator.paginate_queryset(answers, request)
 
         serializer = AnswerSerializer(result_page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
 
-    def post(self, request):
+    def post(self, request): 
         data = request.data.copy()
         data["author"] = request.user.id
 
@@ -111,6 +120,7 @@ class AnswerListCreateView(APIView):
         if serializer.is_valid():
             answer = serializer.save(author=request.user)
             check_answer_badges(request.user)
+            
             # update answers_count
             question = answer.question
             question.answers_count += 1
@@ -119,12 +129,11 @@ class AnswerListCreateView(APIView):
             request.user.points += 10
             request.user.save()
 
-
             if question.author != request.user:
                 create_notification(
                     user=question.author,
                     noti_type="answer",
-                    message=f"{request.user.name} answerd your question: '{question.title}'",
+                    message=f"{request.user.name} answered your question: '{question.title}'",
                     related_object_id=answer.id,
                     related_object_type="Answer"
                 )
@@ -132,7 +141,6 @@ class AnswerListCreateView(APIView):
             return Response(AnswerSerializer(answer, context={'request': request}).data, status=201)
 
         return Response(serializer.errors, status=400)
- 
 
 # UPDATE OR DELETE VIEWS
 class TagDetailView(RetrieveUpdateDestroyAPIView):

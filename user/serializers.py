@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, Badge
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 # rest of password import
@@ -124,5 +124,10 @@ class PublicUserSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(read_only=True)
     class Meta:
         model = User
-        fields = [ "id", "name", "avatar", "bio", "points", "badges"]
+        fields = [ "id","email", "name", "avatar", "bio", "points", "badges", "date_joined"]
         read_only_fields = fields
+        
+class BadgeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Badge
+        fields = ['id', 'name', 'icon', 'description']

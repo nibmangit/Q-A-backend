@@ -4,14 +4,14 @@ from .serializers import (
     UserRegisterSerializer,
     MyTokenObtainPairSerializer, UserProfileSerializer,
     UserProfileUpdateSerializer, UserPasswordUpdateSerializer,
-    SetNewPasswordSerializer,PublicUserSerializer
+    SetNewPasswordSerializer,PublicUserSerializer, BadgeSerializer
 )
 from rest_framework.response import Response 
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-
+from .models import Badge
 # For password Reset.
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -144,3 +144,7 @@ class TopUsersView(generics.ListAPIView):
         ).order_by('-points')[:10]
  
 
+class BadgeListView(generics.ListAPIView):
+    queryset = Badge.objects.all()
+    serializer_class = BadgeSerializer
+    permission_classes = [AllowAny]
