@@ -3,7 +3,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from .models import DiscussionRoom, WriteRequest, ChatMessage
+from .models import DiscussionRoom, WriteRequest, ChatMessage, RoomSeen
 from .serializers import ChatMessageSerializer, WriteRequestSerializer
 
 class ChatHistoryPagination(PageNumberPagination):
@@ -19,27 +19,28 @@ class ChatHistoryView(generics.ListAPIView):
         question_id = self.kwargs['question_id']
         return ChatMessage.objects.filter(room__question_id=question_id).order_by('-timestamp')
 
-    def list(self, request, *args, **kwargs):
-        # 1. Get the standard paginated response
-        response = super().list(request, *args, **kwargs)
-        
-        # 2. Identify the room and the current user
+    def list(self, request, *args, **kwargs): 
+        response = super().list(request, *args, **kwargs) 
         question_id = self.kwargs['question_id']
         room = get_object_or_404(DiscussionRoom, question_id=question_id)
-        user = request.user
-        
-        # 3. Check permissions
-        # We compare the user objects directly. Django handles this correctly 
-        # even if the serializer returns the email string for 'author'.
+        user = request.user 
+        # 1. Permission checks
         is_owner = (room.question.author == user)
         is_authorized = room.authorized_writers.filter(id=user.id).exists()
-        is_banned = room.banned_users.filter(id=user.id).exists()
+        is_banned = room.banned_users.filter(id=user.id).exists() 
         
-        # 4. Inject these flags into the response so React knows what to show
-        # This is the "Source of Truth" for the Frontend button visibility
-        response.data['user_can_write'] = is_owner or is_authorized
-        response.data['is_owner'] = is_owner
-        response.data['is_banned'] = is_banned
+        my_seen = RoomSeen.objects.filter(user=user, room=room).first()
+        others_seen = RoomSeen.objects.filter(room=room).exclude(user=user).order_by('-last_seen_timestamp').first()
+        my_timestamp = my_seen.last_seen_timestamp.isoformat() if my_seen else None
+        others_timestamp = others_seen.last_seen_timestamp.isoformat() if others_seen else None
+        
+        response.data.update({
+            'user_can_write': is_owner or is_authorized,
+            'is_owner': is_owner,
+            'is_banned': is_banned,
+            'last_seen_timestamp': my_timestamp,
+            'others_last_seen_timestamp': others_timestamp,
+        })
         
         return response
 

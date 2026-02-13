@@ -38,7 +38,16 @@ class ChatMessage(models.Model):
     def __str__(self):
         return f"{self.user.username if self.user else 'System'}: {self.content[:20]}"
     
+class RoomSeen(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    room = models.ForeignKey(DiscussionRoom, on_delete=models.CASCADE)
+    last_seen_timestamp = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'room')
     
+    def __str__(self):
+        return f"{self.user.username} seen {self.room.id} at {self.last_seen_timestamp}"
 
 class WriteRequest(models.Model):
     """Users apply here to get permission to send messages."""

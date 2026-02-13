@@ -6,16 +6,19 @@ class ChatMessageSerializer(serializers.ModelSerializer):
     user_id = serializers.ReadOnlyField(source = 'user.id')
     message_id = serializers.IntegerField(source='id', read_only=True)
     image = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
     class_name = "ChatMessageSerializer"
 
     class Meta:
         model = ChatMessage
-        fields = ['message_id', 'username','user_id', 'image','content', 'timestamp', 'message_type']
+        fields = ['message_id', 'username','user_id', 'image','content', 'timestamp', 'message_type', 'reactions', 'status']
         
     def get_image(self, obj):
         if obj.image:
             return obj.image.url
         return None
+    def get_status(self, obj):
+        return 'sent'
         
         
 class WriteRequestSerializer(serializers.ModelSerializer):
