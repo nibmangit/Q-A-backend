@@ -2,6 +2,7 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import DiscussionRoom, ChatMessage
+from django.core.cache import cache
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -21,12 +22,44 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
         await self.accept()
+        
+        # BROADCAST that a user joined
+        
+        cache_key = f"online_users_{self.question_id}"
+        online_data = cache.get(cache_key, {}) # {user_id: username}
+        online_data[str(user.id)] = user.username
+        cache.set(cache_key, online_data, 3600) # Expire in 1 hour if idle
+        
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'presence_update_full',
+                'online_users': online_data
+            }
+        )
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
+        # await self.channel_layer.group_discard(
+        #     self.room_group_name,
+        #     self.channel_name
+        # )
+        user = self.scope['user']
+        cache_key = f"online_users_{self.question_id}"
+        online_data = cache.get(cache_key, {})
+        
+        user_id_str = str(user.id)
+        if user_id_str in online_data:
+            del online_data[user_id_str]
+        cache.set(cache_key, online_data, 3600)
+        # BROADCAST that a user left
+        await self.channel_layer.group_send(
             self.room_group_name,
-            self.channel_name
+            {
+                'type': 'presence_update_full',
+                'online_users': online_data
+            }
         )
+        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
     async def receive(self, text_data):  
         try:
@@ -69,23 +102,70 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     )
                 return
            
+            #Request handler
+            if action_type == 'request_access':
+                # This signal comes from the user asking to join
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'access_requested',
+                        'user_id': user.id,
+                        'username': user.username
+                    }
+                )
+                return
+                
+            #Approval and rejection broadcast
+            if action_type == 'update_request_status':
+                target_user_id = data.get('user_id')
+                new_status = data.get('status') # 'approved' or 'rejected'
+                
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'request_status_changed',
+                        'target_user_id': target_user_id,
+                        'status': new_status
+                    }
+                )
+                return
+                
+            #Typing indicator
+            if action_type == 'typing':
+                is_typing = data.get('is_typing', False)
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'user_typing',
+                        'user_id': user.id,
+                        'username': user.username,
+                        'is_typing': is_typing
+                    }
+                )
+                return
+                
             # --- HANDLE NEW MESSAGE ---
             # Check if user has write permission (Author or Authorized)
-            if not await self.can_user_write(user):
-                await self.send(text_data=json.dumps({
-                    'type': 'error',
-                    'message': 'Permission denied: You need write access.'
-                }))
-                return
+            if action_type == 'chat_message':
+                if not await self.can_user_write(user):
+                    await self.send(text_data=json.dumps({
+                        'type': 'error',
+                        'message': 'Permission denied: You need write access.'
+                    }))
+                    return
 
-            message_text = data.get('message')
-            saved_msg = await self.save_message(user, message_text)
-            
-            await self.channel_layer.group_send(
+                message_text = data.get('message')
+                image_url = data.get('image_url')
+                msg_type = 'image' if image_url else 'text'
+                saved_msg = await self.save_message(user, message_text, image_url, msg_type)
+                
+                await self.channel_layer.group_send(
                 self.room_group_name,
                 {
-                    'type': 'chat_message',
+                    'type': 'chat_message_handler',
                     'content': saved_msg.content,
+                    'image': image_url,
+                    'message_type': msg_type,
                     'username': user.username,
                     'timestamp': str(saved_msg.timestamp),
                     'user_id': user.id,
@@ -98,11 +178,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     # --- BROADCAST HANDLERS (Methods called by group_send) ---
 
-    async def chat_message(self, event):
-        """Sends a new message to the browser"""
+    async def chat_message_handler(self, event):
+        """Sends a new message (text or image) to the browser"""
         await self.send(text_data=json.dumps({
             'type': 'new_message',
             'content': event['content'],
+            'image': event.get('image'),
+            'message_type': event.get('message_type'),
             'username': event['username'],
             'timestamp': event['timestamp'],
             'user_id': event['user_id'],
@@ -123,7 +205,34 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'message_id': event['message_id'],
             'new_content': event['new_content']
         }))
+    
+    async def access_requested(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'new_access_request',
+            'user_id': event['user_id'],
+            'username': event['username']
+        }))
+        
+    async def request_status_changed(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'access_status_update',
+            'target_user_id': event['target_user_id'],
+            'status': event['status']
+        }))
 
+    async def user_typing(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'typing_indicator',
+            'user_id': event['user_id'],
+            'username': event['username'],
+            'is_typing': event['is_typing']
+        }))
+        
+    async def presence_update_full(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'presence_update',
+            'users': event['online_users']
+        }))
     # --- DATABASE OPERATIONS (Must be database_sync_to_async) ---
 
     @database_sync_to_async
@@ -160,11 +269,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         ChatMessage.objects.filter(id=message_id).delete()
 
     @database_sync_to_async
-    def save_message(self, user, content):
-        room, created = DiscussionRoom.objects.get_or_create(question_id=self.question_id)
+    def save_message(self, user, content, image_url=None, message_type='text'):
+        room = DiscussionRoom.objects.get(question_id=self.question_id)
         return ChatMessage.objects.create(
             room=room,
             user=user,
             content=content,
-            message_type='text'
+            image=image_url, # CloudinaryField accepts the URL string directly
+            message_type=message_type
         )

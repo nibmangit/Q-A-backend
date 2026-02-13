@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from cloudinary.models import CloudinaryField
 
 class DiscussionRoom(models.Model):
     question = models.OneToOneField('questions.Question', on_delete=models.CASCADE, related_name='discussion_room')
@@ -25,7 +26,7 @@ class ChatMessage(models.Model):
     room = models.ForeignKey(DiscussionRoom, on_delete=models.CASCADE, related_name='messages')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
     content = models.TextField()
-    image = models.ImageField(upload_to='chat_images/', null=True, blank=True)
+    image = CloudinaryField('image', blank=True, null=True)
     message_type = models.CharField(max_length=10, choices=MESSAGE_TYPES, default='text')
     is_pinned = models.BooleanField(default=False)
     reactions = models.JSONField(default=dict, blank=True)
