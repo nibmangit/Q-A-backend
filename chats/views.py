@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from .models import DiscussionRoom, WriteRequest, ChatMessage, RoomSeen
-from .serializers import ChatMessageSerializer, WriteRequestSerializer
+from .serializers import ChatMessageSerializer, WriteRequestSerializer, BannedUserSerializer
 
 class ChatHistoryPagination(PageNumberPagination):
     page_size = 20
@@ -112,3 +112,18 @@ class MessageControlView(APIView):
 
         serializer = ChatMessageSerializer(message)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+class BannedUsersListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, question_id):
+        room = get_object_or_404(DiscussionRoom, question_id=question_id)
+        
+        # Security: Only the room author can see the banned list
+        if room.question.author != request.user:
+            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+            
+        banned_users = room.banned_users.all()
+        serializer = BannedUserSerializer(banned_users, many=True)
+        return Response(serializer.data)

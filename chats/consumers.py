@@ -14,7 +14,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
         self.room_id = await self.get_room_id_from_question(self.question_id)
         if not self.room_id:
-            await self.close(code=404) # Room not found
+            await self.close(code=4004) # Room not found
             return
 
         # 1. Reject if not logged in or if banned
@@ -186,6 +186,38 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     }
                 )
                 return
+            
+            # --- HANDLE BANNING ---
+            if action_type == 'ban_user':
+                target_user_id = data.get('user_id')
+                # Only the Question Author (Room Owner) can ban
+                if await self.is_room_author(user):
+                    await self.ban_user_in_db(target_user_id)
+                    # Broadcast to everyone in the room
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'user_banned_broadcast',
+                            'target_user_id': target_user_id
+                        }
+                    )
+                return
+
+            # --- HANDLE UNBANNING ---
+            if action_type == 'unban_user':
+                target_user_id = data.get('user_id')
+                if await self.is_room_author(user):
+                    await self.unban_user_in_db(target_user_id)
+                    # Broadcast to everyone
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'user_unbanned_broadcast',
+                            'target_user_id': target_user_id
+                        }
+                    )
+                return
+            
             # --- HANDLE NEW MESSAGE ---
             # Check if user has write permission (Author or Authorized)
             if action_type == 'chat_message':
@@ -292,6 +324,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'timestamp': event['timestamp']
             }))
     
+    #for banning
+    async def user_banned_broadcast(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'user_banned_signal',
+            'target_user_id': event['target_user_id']
+        }))
+
+    async def user_unbanned_broadcast(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'user_unbanned_signal',
+            'target_user_id': event['target_user_id']
+        }))
     # --- DATABASE OPERATIONS (Must be database_sync_to_async) ---
     @database_sync_to_async
     def is_user_banned(self, user):
@@ -372,6 +416,27 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 room_id=room_id,
                 defaults={} # Just triggering the auto_now timestamp
             )
+    
+    #for banning a user
+    @database_sync_to_async
+    def is_room_author(self, user):
+        return DiscussionRoom.objects.filter(question_id=self.question_id, question__author=user).exists()
+
+    @database_sync_to_async
+    def ban_user_in_db(self, target_user_id):
+        room = DiscussionRoom.objects.get(question_id=self.question_id)
+        # 1. Add to banned list
+        room.banned_users.add(target_user_id)
+        # 2. Remove from authorized writers (optional but recommended)
+        room.authorized_writers.remove(target_user_id)
+        # 3. Clean up any pending write requests
+        WriteRequest.objects.filter(room=room, user_id=target_user_id).delete()
+
+    @database_sync_to_async
+    def unban_user_in_db(self, target_user_id):
+        room = DiscussionRoom.objects.get(question_id=self.question_id)
+        room.banned_users.remove(target_user_id)
+    
     @database_sync_to_async
     def save_message(self, user, content, image_url=None, message_type='text'):
         room = DiscussionRoom.objects.get(question_id=self.question_id)

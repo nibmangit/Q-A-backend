@@ -36,3 +36,8 @@ class RoomModerationSerializer(serializers.ModelSerializer):
     class Meta:
         model = DiscussionRoom
         fields = ['is_active', 'authorized_writers_count']
+        
+
+class BannedUserSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField(source='id')
+    username = serializers.CharField()
