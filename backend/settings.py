@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-bx)mcx#-y@v8cq@4n4ew1yb5#53(x4)a9peuhx-1hptatciy%e
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = ["*"]
-CORS_ALLOWED_ORIGINS =  True
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Application definition
 INSTALLED_APPS = [
@@ -86,12 +86,12 @@ ASGI_APPLICATION = 'backend.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+import dj_database_url
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR}/db.sqlite3"  # fallback for local dev
+    )
 }
 
 REST_FRAMEWORK = {
