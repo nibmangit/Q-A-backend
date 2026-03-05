@@ -175,7 +175,7 @@ class QuestionDetailView(RetrieveUpdateDestroyAPIView):
         return [permission() for permission in permission_classes]
 
     def perform_update(self, serializer):
-        old_question = self.get_object() 
+        old_question = self.get_object()
         old_category = old_question.category 
 
         new_question = serializer.save() 
