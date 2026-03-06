@@ -24,11 +24,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-bx)mcx#-y@v8cq@4n4ew1yb5#53(x4)a9peuhx-1hptatciy%e')
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ["*"]
-CORS_ALLOW_ALL_ORIGINS = True
+ALLOWED_HOSTS = [
+    "q-a-backend.onrender.com",   # Render live backend
+    "127.0.0.1",                  # local dev if needed
+    "localhost",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://q-a-backend.onrender.com",
+    "https://qand-a-platform.vercel.app",  # optional if you call API from frontend
+] 
 
 # Application definition
 INSTALLED_APPS = [
