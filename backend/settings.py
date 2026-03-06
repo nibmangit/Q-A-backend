@@ -23,8 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-bx)mcx#-y@v8cq@4n4ew1yb5#53(x4)a9peuhx-1hptatciy%e')
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-bx)mcx#-y@v8cq@4n4ew1yb5#53(x4)a9peuhx-1hptatciy%e') 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
@@ -38,6 +37,17 @@ CSRF_TRUSTED_ORIGINS = [
     "https://q-a-backend.onrender.com",
     "https://qand-a-platform.vercel.app",  # optional if you call API from frontend
 ] 
+
+CORS_ALLOWED_ORIGINS = [
+    "https://qand-a-platform.vercel.app",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+# Security settings
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 # Application definition
 INSTALLED_APPS = [
