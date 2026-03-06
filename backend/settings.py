@@ -28,8 +28,9 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-bx)mcx#-y@v8cq@4n4ew1yb5#5
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [
-    "q-a-backend.onrender.com",   # Render live backend
-    "127.0.0.1",                  # local dev if needed
+    "q-a-backend.onrender.com",   
+    "qand-a-platform.vercel.app",
+    "127.0.0.1",                  
     "localhost",
 ]
 
@@ -211,8 +212,10 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            # Use the URL directly in a list
-            "hosts": [os.environ.get("REDIS_URL")],
+            "hosts": [{
+                "address": os.environ.get("REDIS_URL"),
+                "ssl_cert_reqs": None, # This allows the secure connection to Render Redis
+            }],
         },
     },
 }
