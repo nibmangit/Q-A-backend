@@ -15,14 +15,19 @@ class ChatHistoryView(generics.ListAPIView):
     serializer_class = ChatMessageSerializer
     pagination_class = ChatHistoryPagination
 
-    def get_queryset(self):
+    def get_room(self):
         question_id = self.kwargs['question_id']
-        return ChatMessage.objects.filter(room__question_id=question_id).order_by('-timestamp')
+        room, created = DiscussionRoom.objects.get_or_create(question_id=question_id)
+        return room
+    
+    def get_queryset(self):
+        room = self.get_room()
+        return ChatMessage.objects.filter(room=room).order_by('-timestamp')
 
     def list(self, request, *args, **kwargs): 
         response = super().list(request, *args, **kwargs) 
         question_id = self.kwargs['question_id']
-        room = get_object_or_404(DiscussionRoom, question_id=question_id)
+        room = self.get_room()
         user = request.user 
         # 1. Permission checks
         is_owner = (room.question.author == user)

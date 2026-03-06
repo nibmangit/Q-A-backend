@@ -206,11 +206,13 @@ SIMPLE_JWT = {
 }
 
 
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")],
+            # Use the URL directly in a list
+            "hosts": [os.environ.get("REDIS_URL")],
         },
     },
 }
