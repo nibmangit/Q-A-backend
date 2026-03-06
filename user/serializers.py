@@ -71,7 +71,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(required=False)
     class Meta:
         model = User
-        fields = ['id', 'email', 'name', 'role', 'points', 'bio','is_superuser', 'badges', 'avatar']
+        fields = ['id', 'email', 'name', 'role', 'points', 'bio','is_superuser', 'badges','data_joind', 'avatar']
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
