@@ -41,6 +41,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOWED_ORIGINS = [
     "https://qand-a-platform.vercel.app",
+    "http://localhost:5173",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
