@@ -27,8 +27,7 @@ class SetNewPasswordSerializer(serializers.Serializer):
 
             # Decode UID
             uid = urlsafe_base64_decode(uid).decode()
-            user = User.objects.get(pk=uid)
-            print("Decoded UID:", uid)
+            user = User.objects.get(pk=uid) 
 
             # Check token
             if not PasswordResetTokenGenerator().check_token(user, token):

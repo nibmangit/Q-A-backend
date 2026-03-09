@@ -22,6 +22,9 @@ from django.utils.html import strip_tags
 from django.conf import settings
 from django.db.models import Count
 from .utils import check_active_user_badge
+import resend
+import os
+
 #rest password view
 User = get_user_model()
 class PasswordResetRequestView(generics.GenericAPIView):
@@ -55,13 +58,23 @@ class PasswordResetRequestView(generics.GenericAPIView):
                 <p style="font-size: 12px; color: #666;">If the button doesn't work, copy this link: {reset_link}</p>
             </div>
         """
-        text_content = strip_tags(html_content)
+        resend.api_key = os.getenv("RESEND_API_KEY")
 
-        msg = EmailMultiAlternatives(subject, text_content, settings.EMAIL_HOST_USER, [user.email])
-        msg.attach_alternative(html_content, "text/html")
-        msg.send()
+        try:
+            params = {
+                "from": "onboarding@resend.dev", # Resend's default for unverified domains
+                "to": [user.email],
+                "subject": subject,
+                "html": html_content,
+            }
 
-        return Response({"message": "Password reset link sent"}, status=200)
+            resend.Emails.send(params)
+            return Response({"message": "Password reset link sent"}, status=200)
+            
+        except Exception as e:
+            # Log the error to your terminal so you can see it
+            print(f"RESEND ERROR: {str(e)}")
+            return Response({"error": "Failed to send email via Resend."}, status=500)
 
 class PasswordResetConfirmView(APIView):
     def post(self, request):
