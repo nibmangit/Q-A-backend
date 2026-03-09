@@ -18,7 +18,7 @@ urlpatterns = [
     path('profile/password/', PasswordUpdateView.as_view(), name='password-update'),
 
     # Password reset request
-    path("password-reset/", PasswordResetRequestView.as_view(), name="password-reset"),
+    path("password-reset-request/", PasswordResetRequestView.as_view(), name="password-reset"),
     path("password-reset-confirm/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
     path("badges/", BadgeListView.as_view(), name="badges"),
 

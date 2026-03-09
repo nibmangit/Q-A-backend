@@ -16,8 +16,10 @@ from .models import Badge
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes
-from django.core.mail import send_mail
+from django.utils.encoding import force_bytes 
+from django.core.mail import EmailMultiAlternatives
+from django.utils.html import strip_tags
+from django.conf import settings
 from django.db.models import Count
 from .utils import check_active_user_badge
 #rest password view
@@ -33,18 +35,31 @@ class PasswordResetRequestView(generics.GenericAPIView):
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return Response({"message": "If this email exists, we sent a reset link."}, status=200)
-        
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = PasswordResetTokenGenerator().make_token(user)
+         
+        uid = urlsafe_base64_encode(force_bytes(user.pk)) 
+        token = PasswordResetTokenGenerator().make_token(user) 
 
-        reset_link = f"http://localhost:3000/reset-password/{uid}/{token}/"
+        reset_link = f"https://qand-a-platform.vercel.app/reset-password/{uid}/{token}/"
 
-        send_mail(
-            subject="Reset your password",
-            message=f"Click the link to reset your password:\n{reset_link}",
-            from_email="no-reply@example.com",
-            recipient_list=[user.email],
-        )
+        subject = "Reset your Question and Answer Password"
+        html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; border: 1px solid #eee; padding: 20px;">
+                <h2 style="color: #003366;">Password Reset Request</h2>
+                <p>You requested a password reset for your Bahir Dar University Student Question and Answer account.</p>
+                <div style="margin: 30px 0;">
+                    <a href="{reset_link}" 
+                    style="background-color: #007BFF; color: #ffffff; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 5px;">
+                    Reset My Password
+                    </a>
+                </div>
+                <p style="font-size: 12px; color: #666;">If the button doesn't work, copy this link: {reset_link}</p>
+            </div>
+        """
+        text_content = strip_tags(html_content)
+
+        msg = EmailMultiAlternatives(subject, text_content, settings.EMAIL_HOST_USER, [user.email])
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
 
         return Response({"message": "Password reset link sent"}, status=200)
 

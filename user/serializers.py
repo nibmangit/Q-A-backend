@@ -5,15 +5,21 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 # rest of password import
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_decode
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model 
 
 User = get_user_model()
 class SetNewPasswordSerializer(serializers.Serializer):
     uid = serializers.CharField()
     token = serializers.CharField()
-    new_password = serializers.CharField(min_length=8)
+    new_password = serializers.CharField(min_length=6)
+    confirm_password = serializers.CharField(min_length=6)
 
     def validate(self, attrs):
+        # Check passwords match
+        print("Serializer received:", attrs)
+        if attrs.get('new_password') != attrs.get('confirm_password'):
+            raise serializers.ValidationError("Passwords do not match")
+
         try:
             uid = attrs.get('uid')
             token = attrs.get('token')
@@ -22,6 +28,7 @@ class SetNewPasswordSerializer(serializers.Serializer):
             # Decode UID
             uid = urlsafe_base64_decode(uid).decode()
             user = User.objects.get(pk=uid)
+            print("Decoded UID:", uid)
 
             # Check token
             if not PasswordResetTokenGenerator().check_token(user, token):
@@ -30,8 +37,12 @@ class SetNewPasswordSerializer(serializers.Serializer):
             attrs['user'] = user
             return attrs
 
-        except Exception:
-            raise serializers.ValidationError("Invalid data")
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            raise serializers.ValidationError({"uid": "Invalid user ID"})
+        except Exception as e:
+            # This helps you see the REAL error in your terminal during testing
+            print(f"Reset Error: {e}")
+            raise serializers.ValidationError({"non_field_errors": "Reset process failed"})
 
     def save(self, **kwargs):
         user = self.validated_data['user']
