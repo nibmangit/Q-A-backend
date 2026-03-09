@@ -16,10 +16,7 @@ from .models import Badge
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes 
-from django.core.mail import EmailMultiAlternatives
-from django.utils.html import strip_tags
-from django.conf import settings
+from django.utils.encoding import force_bytes  
 from django.db.models import Count
 from .utils import check_active_user_badge
 import resend
@@ -58,7 +55,12 @@ class PasswordResetRequestView(generics.GenericAPIView):
                 <p style="font-size: 12px; color: #666;">If the button doesn't work, copy this link: {reset_link}</p>
             </div>
         """
-        resend.api_key = os.getenv("RESEND_API_KEY")
+        api_key = os.getenv("RESEND_API_KEY")
+        if not api_key:
+            print("CRITICAL ERROR: RESEND_API_KEY is not set in environment variables!")
+            return Response({"error": "Email configuration missing"}, status=500)
+            
+        resend.api_key = api_key
 
         try:
             params = {
@@ -68,7 +70,7 @@ class PasswordResetRequestView(generics.GenericAPIView):
                 "html": html_content,
             }
 
-            resend.Emails.send(params)
+            resend.Emails.send(params) 
             return Response({"message": "Password reset link sent"}, status=200)
             
         except Exception as e:
