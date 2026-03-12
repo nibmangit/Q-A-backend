@@ -42,6 +42,7 @@ CSRF_TRUSTED_ORIGINS = [
 CORS_ALLOWED_ORIGINS = [
     "https://qand-a-platform.vercel.app",
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -115,6 +116,7 @@ DATABASES = {
         default=f"sqlite:///{BASE_DIR}/db.sqlite3"  # fallback for local dev
     )
 }
+ 
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -136,11 +138,16 @@ REST_FRAMEWORK = {
     }
 }
 
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
- 
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND")
 
-# This is what users see in the "From" field
-DEFAULT_FROM_EMAIL = "Q and A platform <onboarding@resend.dev>"
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS") == "True"
+
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

@@ -18,8 +18,9 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes  
 from django.db.models import Count
-from .utils import check_active_user_badge
-import resend
+from .utils import check_active_user_badge 
+from django.core.mail import EmailMultiAlternatives
+from django.conf import settings
 import os
 
 #rest password view
@@ -55,28 +56,22 @@ class PasswordResetRequestView(generics.GenericAPIView):
                 <p style="font-size: 12px; color: #666;">If the button doesn't work, copy this link: {reset_link}</p>
             </div>
         """
-        api_key = os.getenv("RESEND_API_KEY")
-        if not api_key:
-            print("CRITICAL ERROR: RESEND_API_KEY is not set in environment variables!")
-            return Response({"error": "Email configuration missing"}, status=500)
-            
-        resend.api_key = api_key
-
         try:
-            params = {
-                "from": "onboarding@resend.dev", # Resend's default for unverified domains
-                "to": [user.email],
-                "subject": subject,
-                "html": html_content,
-            }
+            email_message = EmailMultiAlternatives(
+                subject=subject,
+                body="Password reset request",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[user.email],
+            )
 
-            resend.Emails.send(params) 
+            email_message.attach_alternative(html_content, "text/html")
+            email_message.send()
+
             return Response({"message": "Password reset link sent"}, status=200)
-            
+
         except Exception as e:
-            # Log the error to your terminal so you can see it
-            print(f"RESEND ERROR: {str(e)}")
-            return Response({"error": "Failed to send email via Resend."}, status=500)
+            print(f"EMAIL ERROR: {str(e)}")
+            return Response({"error": "Failed to send email."}, status=500)
 
 class PasswordResetConfirmView(APIView):
     def post(self, request):
