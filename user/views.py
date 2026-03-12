@@ -1,3 +1,5 @@
+import os
+import requests
 from rest_framework import status,generics,filters 
 from rest_framework.parsers import MultiPartParser, FormParser
 from .serializers import (
@@ -20,8 +22,7 @@ from django.utils.encoding import force_bytes
 from django.db.models import Count
 from .utils import check_active_user_badge 
 from django.core.mail import EmailMultiAlternatives
-from django.conf import settings
-import os
+from django.conf import settings 
 
 #rest password view
 User = get_user_model()
@@ -42,7 +43,14 @@ class PasswordResetRequestView(generics.GenericAPIView):
 
         reset_link = f"https://qand-a-platform.vercel.app/reset-password/{uid}/{token}/"
 
-        subject = "Reset your Question and Answer Password"
+        # Brevo API Configuration
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "api-key": os.getenv("BREVO_API_KEY")
+        }
+        
         html_content = f"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; border: 1px solid #eee; padding: 20px;">
                 <h2 style="color: #003366;">Password Reset Request</h2>
@@ -56,22 +64,26 @@ class PasswordResetRequestView(generics.GenericAPIView):
                 <p style="font-size: 12px; color: #666;">If the button doesn't work, copy this link: {reset_link}</p>
             </div>
         """
+
+        payload = {
+            "sender": {"name": "NetTech", "email": os.getenv("DEFAULT_FROM_EMAIL")},
+            "to": [{"email": user.email}],
+            "subject": "Reset your Question and Answer Password",
+            "htmlContent": html_content
+        }
+
         try:
-            email_message = EmailMultiAlternatives(
-                subject=subject,
-                body="Password reset request",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[user.email],
-            )
-
-            email_message.attach_alternative(html_content, "text/html")
-            email_message.send()
-
-            return Response({"message": "Password reset link sent"}, status=200)
+            response = requests.post(url, json=payload, headers=headers)
+            
+            if response.status_code == 201:
+                return Response({"message": "Password reset link sent"}, status=200)
+            else:
+                print(f"BREVO ERROR: {response.text}")
+                return Response({"error": "Failed to send email via API."}, status=500)
 
         except Exception as e:
-            print(f"EMAIL ERROR: {str(e)}")
-            return Response({"error": "Failed to send email."}, status=500)
+            print(f"CONNECTION ERROR: {str(e)}")
+            return Response({"error": "Failed to connect to email service."}, status=500)
 
 class PasswordResetConfirmView(APIView):
     def post(self, request):
