@@ -22,6 +22,8 @@ from .utils import check_active_user_badge
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 import os
+import logging
+logger = logging.getLogger(__name__)
 
 #rest password view
 User = get_user_model()
@@ -70,7 +72,7 @@ class PasswordResetRequestView(generics.GenericAPIView):
             return Response({"message": "Password reset link sent"}, status=200)
 
         except Exception as e:
-            print(f"EMAIL ERROR: {str(e)}")
+            logger.error(f"EMAIL ERROR: {e}")
             return Response({"error": "Failed to send email."}, status=500)
 
 class PasswordResetConfirmView(APIView):
