@@ -82,8 +82,8 @@ class PasswordResetRequestView(generics.GenericAPIView):
                 return Response({"error": "Failed to send email via API."}, status=500)
 
         except Exception as e:
-            print(f"CONNECTION ERROR: {str(e)}")
-            return Response({"error": "Failed to connect to email service."}, status=500)
+            print(f"EMAIL ERROR: {str(e)}")
+            return Response({"error": "Failed to send email."}, status=500)
 
 class PasswordResetConfirmView(APIView):
     def post(self, request):
