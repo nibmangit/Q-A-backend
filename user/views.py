@@ -142,7 +142,7 @@ class PasswordResetRequestView(generics.GenericAPIView):
         """
 
         payload = {
-            "sender": {"name": "NetTech", "email": os.getenv("DEFAULT_FROM_EMAIL")},
+            "sender": {"name": "Q and A team", "email": os.getenv("DEFAULT_FROM_EMAIL")},
             "to": [{"email": user.email}],
             "subject": "Reset your Question and Answer Password",
             "htmlContent": html_content
