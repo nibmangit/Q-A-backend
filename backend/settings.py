@@ -36,7 +36,7 @@ ALLOWED_HOSTS = [
 
 CSRF_TRUSTED_ORIGINS = [
     "https://q-a-backend.onrender.com",
-    "https://qand-a-platform.vercel.app",  # optional if you call API from frontend
+    "https://qand-a-platform.vercel.app", 
 ] 
 
 CORS_ALLOWED_ORIGINS = [
@@ -116,6 +116,13 @@ DATABASES = {
         default=f"sqlite:///{BASE_DIR}/db.sqlite3"  # fallback for local dev
     )
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
  
 
 REST_FRAMEWORK = {
@@ -138,8 +145,12 @@ REST_FRAMEWORK = {
     }
 }
 
+#for reset password
 BREVO_API_KEY = os.getenv('BREVO_API_KEY')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
+
+#for continue with login
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

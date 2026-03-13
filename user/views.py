@@ -24,6 +24,82 @@ from .utils import check_active_user_badge
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings 
 
+# user/views.py
+
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from rest_framework_simplejwt.tokens import RefreshToken
+import uuid 
+
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        token = request.data.get('token')
+        
+        if not token:
+            return Response({'error': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # 1. Verify the token with Google
+            idinfo = id_token.verify_oauth2_token(
+                token, 
+                requests.Request(), 
+                settings.GOOGLE_CLIENT_ID
+            )
+
+            # 2. Get User Info from Google
+            email = idinfo.get('email')
+            google_name = idinfo.get('name') 
+            first_name = idinfo.get('given_name', '')
+            last_name = idinfo.get('family_name', '')
+            
+            if not google_name:
+                google_name = f"{first_name} {last_name}".strip()
+
+            # 3. Check if user exists or create them
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={ 
+                    'username': google_name.lower().replace(' ', '_') if google_name else email.split('@')[0],
+                    'name': google_name,
+                    'role': 'student',
+                    'is_active': True,
+                }
+            )
+            
+            if not created and not user.name:
+                user.name = google_name 
+                if user.username == email.split('@')[0]:
+                    user.username = google_name.lower().replace(' ', '_')
+                user.save()
+
+            # 4. If it's a new user, set a random password
+            if created:
+                user.set_password(str(uuid.uuid4()))
+                user.save()
+
+            # 5. Check badges 
+            check_active_user_badge(user) 
+
+            # 6. Generate SimpleJWT tokens
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'user': {
+                    'email': user.email,
+                    'name': user.name,
+                    'is_new': created
+                }
+            }, status=status.HTTP_200_OK)
+
+        except ValueError:
+            return Response({'error': 'Invalid Google token'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 #rest password view
 User = get_user_model()
 class PasswordResetRequestView(generics.GenericAPIView):
