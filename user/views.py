@@ -27,7 +27,7 @@ from django.conf import settings
 # user/views.py
 
 from google.oauth2 import id_token
-from google.auth.transport import requests
+from google.auth.transport import requests as google_requests
 from rest_framework_simplejwt.tokens import RefreshToken
 import uuid 
 
@@ -44,7 +44,7 @@ class GoogleLoginView(APIView):
             # 1. Verify the token with Google
             idinfo = id_token.verify_oauth2_token(
                 token, 
-                requests.Request(), 
+                google_request.Request(), 
                 settings.GOOGLE_CLIENT_ID
             )
 
