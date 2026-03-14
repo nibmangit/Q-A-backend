@@ -44,7 +44,7 @@ class GoogleLoginView(APIView):
             # 1. Verify the token with Google
             idinfo = id_token.verify_oauth2_token(
                 token, 
-                google_request.Request(), 
+                google_requests.Request(), 
                 settings.GOOGLE_CLIENT_ID
             )
 
