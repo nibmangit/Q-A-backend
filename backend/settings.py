@@ -111,9 +111,11 @@ ASGI_APPLICATION = 'backend.asgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 import dj_database_url
 
+CONN_MAX_AGE = 600
+
 DATABASES = {
     "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR}/db.sqlite3"  # fallback for local dev
+        default=f"sqlite:///{BASE_DIR}/db.sqlite3" 
     )
 }
 
